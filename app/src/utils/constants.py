@@ -23,14 +23,22 @@ HEADER_USERNAME = "x-username"
 HEADER_PASSWORD = "x-password"
 HEADER_CLIENT = "x-client"
 
-# Error Messages
-ERROR_NO_CLIENT = f"""No ADT client available. Ensure SAP credentials are provided in headers:
-  x-hostname: <sap-system-url>
-  x-username: <username>
-  x-password: <password>
-  x-client: <client-number>
+# Environment Variables (used as fallback when headers are not provided)
+ENV_SAP_HOSTNAME = "SAP_HOSTNAME"
+ENV_SAP_USERNAME = "SAP_USERNAME"
+ENV_SAP_PASSWORD = "SAP_PASSWORD"
+ENV_SAP_CLIENT = "SAP_CLIENT"
 
-Or use the 'connect_to_sap' tool to establish a connection without headers.
+# Error Messages
+ERROR_NO_CLIENT = f"""No ADT client available. Ensure SAP credentials are provided either:
+
+  1. As environment variables (configured in .env / Docker):
+     SAP_HOSTNAME, SAP_USERNAME, SAP_PASSWORD, SAP_CLIENT
+
+  2. As HTTP headers per request:
+     x-hostname, x-username, x-password, x-client
+
+  3. Or use the 'connect_to_sap' tool to establish a connection explicitly.
 """
 
 ERROR_MISSING_CREDENTIALS = "Error: username and password are required for SAP connection."

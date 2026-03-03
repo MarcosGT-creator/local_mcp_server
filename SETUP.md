@@ -13,183 +13,93 @@ local_mcp_server/
 │   ├── start_server.py         # Entry point
 │   ├── requirements.txt        # Dependencias Python
 │   └── src/                    # Modulos del servidor
-├── nginx/
-│   ├── nginx.conf              # Configuracion del reverse proxy
-│   ├── certs/
-│   │   ├── server.crt          # Certificado TLS (ya generado, valido 1 ano)
-│   │   └── server.key          # Clave privada TLS
-│   └── generate-certs.sh       # Script para regenerar certificados si expiran
 ├── Dockerfile                  # Imagen del servidor MCP
-├── docker-compose.yml          # Orquestacion: servidor MCP + nginx con TLS
-├── .env                        # Variables de entorno (crear a partir de .env.example)
+├── docker-compose.yml          # Orquestacion del contenedor
+├── start.ps1                   # Script de arranque (PowerShell)
+├── .env                        # Variables de entorno (opcional, fallback)
 ├── .env.example                # Plantilla de variables de entorno
 └── .dockerignore               # Exclusiones del build context
 ```
 
-## Paso 1: Crear el fichero .env
+## Paso 1: Construir la imagen (solo la primera vez o tras cambios)
+
+```bash
+docker compose build
+```
+
+## Paso 2: Levantar el servidor
+
+Las credenciales SAP se pasan directamente al arrancar el contenedor.
+
+### PowerShell (recomendado en Windows) 
+
+```powershell
+./start.ps1 -Hostname "https://vhmtjds4ci.fra3.sap.torres.es:20400/" -Username "mgarcia" -Password "tu_password"
+```
+
+Con client diferente al default (100):
+
+```powershell
+./start.ps1 -Hostname "https://vhmtjds4ci.fra3.sap.torres.es:20400/" -Username "mgarcia" -Password "tu_password" -Client "200"
+```
+
+### Linux / macOS / Git Bash
+
+```bash
+SAP_HOSTNAME="https://vhmtjds4ci.fra3.sap.torres.es:20400/" SAP_USERNAME="mgarcia" SAP_PASSWORD="tu_password" SAP_CLIENT="100" docker compose up -d
+```
+
+### Alternativa: usar fichero .env
+
+Si prefieres no pasar las credenciales cada vez, puedes crear un fichero `.env` con los valores:
 
 ```bash
 cp .env.example .env
+# Editar .env con tus credenciales SAP
 ```
 
-Editar `.env` si se necesitan variables adicionales.
-
-## Paso 2: Levantar los servicios
+Y luego simplemente:
 
 ```bash
-docker compose up --build -d
+docker compose up -d
 ```
 
 Esto arranca:
 
-| Servicio          | Contenedor        | Puerto externo | Descripcion                          |
-|-------------------|-------------------|----------------|--------------------------------------|
-| `mcp-sap-adt`  | mcp-sap-adt    | Ninguno        | Servidor MCP Python (solo red interna) |
-| `nginx`           | sap-mcp-nginx     | 443 (HTTPS)    | Reverse proxy con TLS                |
+| Servicio       | Contenedor   | Puerto  | Descripcion              |
+|----------------|--------------|---------|--------------------------|
+| `mcp-sap-adt`  | mcp-sap-adt  | 8001    | Servidor MCP Python      |
 
 ## Paso 3: Verificar que funciona
 
 ```bash
 # Health check
-curl -k https://localhost/health
+curl http://localhost:8001/health
 
 # Pool stats
-curl -k https://localhost/pool-stats
+curl http://localhost:8001/pool-stats
 ```
 
-> La flag `-k` es necesaria porque el certificado es self-signed.
+## Paso 4: Configurar el cliente MCP
 
-## Paso 4: Configurar Claude Desktop
+Las credenciales SAP ahora se gestionan en el servidor (via variables de entorno del contenedor Docker). Los clientes MCP solo necesitan apuntar a la URL del servidor.
 
-### 4.1 Localizar el fichero de configuracion
+### 4.1 Claude Code (CLI)
 
-El fichero de configuracion de Claude Desktop se encuentra en:
-
-| Sistema Operativo | Ruta                                                          |
-|--------------------|---------------------------------------------------------------|
-| **Windows**        | `%APPDATA%\Claude\claude_desktop_config.json`                 |
-| **macOS**          | `~/Library/Application Support/Claude/claude_desktop_config.json` |
-| **Linux**          | `~/.config/Claude/claude_desktop_config.json`                 |
-
-Si el directorio no existe, crearlo:
-
-```bash
-# Windows (PowerShell)
-mkdir "$env:APPDATA\Claude"
-
-# macOS / Linux
-mkdir -p ~/.config/Claude
-```
-
-### 4.2 Crear o editar el fichero
-
-Crear `claude_desktop_config.json` con el siguiente contenido:
-
-```json
-{
-  "mcpServers": {
-    "sap-adt": {
-      "url": "https://localhost/mcp/",
-      "headers": {
-        "x-hostname": "<SAP_SYSTEM_URL>",
-        "x-username": "<SAP_USERNAME>",
-        "x-password": "<SAP_PASSWORD>",
-        "x-client": "110"
-      }
-    }
-  }
-}
-```
-
-### 4.3 Reemplazar los placeholders
-
-| Placeholder        | Valor                                                        | Ejemplo                              |
-|--------------------|--------------------------------------------------------------|--------------------------------------|
-| `<SAP_SYSTEM_URL>` | URL completa del sistema SAP (protocolo + host + puerto)     | `https://sap-dev.company.com:8000`   |
-| `<SAP_USERNAME>`   | Tu usuario SAP                                               | `MGARCIA`                            |
-| `<SAP_PASSWORD>`   | Tu password SAP                                              | `mi_password`                        |
-| `110`              | Numero de cliente SAP (cambiar si es diferente)              | `110`, `120`, `300`, `310`           |
-
-### 4.4 Reiniciar Claude Desktop
-
-Cerrar y volver a abrir Claude Desktop para que cargue la nueva configuracion.
-Al iniciar, deberia aparecer el servidor MCP `sap-adt` disponible con todas sus tools.
-
-### Alternativa: sin headers (modo interactivo)
-
-Si el cliente MCP no soporta headers custom, el agente de IA puede
-conectar usando el tool `connect_to_sap` pasando las credenciales como parametros.
-En este caso dejar los headers vacios y pedir al agente: "conectate a SAP".
-
-## Paso 5: Configurar Claude Code (CLI)
-
-Si usas Claude Code (la CLI) en lugar de Claude Desktop, la configuracion es diferente.
-
-### 5.1 Crear el fichero `.mcp.json` en la raiz del proyecto
+El fichero `.mcp.json` ya esta incluido en el proyecto:
 
 ```json
 {
   "mcpServers": {
     "sap-adt": {
       "type": "http",
-      "url": "https://localhost/mcp/",
-      "headers": {
-        "x-hostname": "<SAP_SYSTEM_URL>",
-        "x-username": "<SAP_USERNAME>",
-        "x-password": "${SAP_PASSWORD}",
-        "x-client": "110"
-      }
+      "url": "http://localhost:8001/mcp/"
     }
   }
 }
 ```
 
-> **Nota:** A diferencia de Claude Desktop, Claude Code requiere el campo `"type": "http"` en la configuracion del servidor.
-
-### 5.2 Configurar la variable de entorno para la password
-
-Claude Code soporta la sintaxis `${VAR_NAME}` para expandir variables de entorno en `.mcp.json`. Esto permite no almacenar la password en el fichero.
-
-**Windows (CMD) - temporal:**
-
-```cmd
-set SAP_PASSWORD=tu_password
-claude
-```
-
-**Windows (PowerShell) - temporal:**
-
-```powershell
-$env:SAP_PASSWORD = "tu_password"
-claude
-```
-
-**Windows - permanente:**
-
-Ir a Panel de Control > Sistema > Configuracion avanzada del sistema > Variables de entorno y crear `SAP_PASSWORD` como variable de usuario.
-
-**Linux / macOS - temporal:**
-
-```bash
-export SAP_PASSWORD=tu_password
-claude
-```
-
-**Linux / macOS - permanente:**
-
-Anadir al `~/.bashrc` o `~/.zshrc`:
-
-```bash
-export SAP_PASSWORD=tu_password
-```
-
-### 5.3 Reemplazar los placeholders
-
-Los mismos placeholders que en el Paso 4.3 (`<SAP_SYSTEM_URL>`, `<SAP_USERNAME>`, etc.), excepto `<SAP_PASSWORD>` que se resuelve via variable de entorno.
-
-### 5.4 Iniciar Claude Code
-
-Al abrir Claude Code desde el directorio del proyecto, deberia detectar el `.mcp.json` y preguntar si se quiere aprobar el servidor MCP.
+Al abrir Claude Code desde el directorio del proyecto, detectara el `.mcp.json` automaticamente:
 
 ```bash
 cd local_mcp_server
@@ -198,70 +108,63 @@ claude
 
 Verificar con el comando `/mcp` dentro de Claude Code que el servidor aparece en la lista.
 
+### 4.2 Claude Desktop
+
+Localizar el fichero de configuracion:
+
+| Sistema Operativo | Ruta                                                          |
+|--------------------|---------------------------------------------------------------|
+| **Windows**        | `%APPDATA%\Claude\claude_desktop_config.json`                 |
+| **macOS**          | `~/Library/Application Support/Claude/claude_desktop_config.json` |
+| **Linux**          | `~/.config/Claude/claude_desktop_config.json`                 |
+
+Crear o editar `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "sap-adt": {
+      "url": "http://localhost:8001/mcp/"
+    }
+  }
+}
+```
+
+Reiniciar Claude Desktop para que cargue la nueva configuracion.
+
+### 4.3 Alternativa: modo interactivo
+
+Si por algun motivo el servidor no tiene credenciales configuradas, el agente de IA puede
+conectar usando el tool `connect_to_sap` pasando las credenciales como parametros.
+
 ## Comandos utiles
 
 ```bash
 # Ver logs en tiempo real
 docker compose logs -f
 
-# Ver logs solo del servidor MCP
-docker compose logs -f mcp-sap-adt
-
-# Ver logs solo de nginx
-docker compose logs -f nginx
-
-# Parar todo
+# Parar el servidor
 docker compose down
 
 # Reconstruir tras cambios en el codigo
 docker compose up --build -d
 
-# Ver estado de los contenedores
+# Ver estado del contenedor
 docker compose ps
-```
-
-## Certificados TLS
-
-Los certificados self-signed ya estan generados en `nginx/certs/` y son validos por 1 ano (hasta febrero 2027).
-
-### Regenerar certificados (cuando expiren)
-
-```bash
-cd nginx
-bash generate-certs.sh
-docker compose restart nginx
-```
-
-### Usar certificados propios (produccion)
-
-Reemplazar los ficheros en `nginx/certs/`:
-
-```
-nginx/certs/server.crt   -> tu certificado
-nginx/certs/server.key   -> tu clave privada
-```
-
-Y reiniciar nginx:
-
-```bash
-docker compose restart nginx
 ```
 
 ## Arquitectura de red
 
 ```
-Cliente MCP (Claude Desktop, VS Code, etc.)
+Cliente MCP (Claude Desktop, Claude Code, etc.)
     │
-    │  HTTPS :443  (credenciales SAP cifradas en headers)
+    │  HTTP :8001
     ▼
 ┌─────────────────────────────────────────┐
-│  Docker Network                         │
+│  Docker Container                       │
+│  (credenciales SAP en env vars)         │
 │                                         │
-│  nginx (TLS termination)                │
-│    │                                    │
-│    │  HTTP :8001 (red interna)          │
-│    ▼                                    │
-│  mcp-sap-adt (FastMCP + Python)      │
+│  mcp-sap-adt (FastMCP + Python)         │
 │    │                                    │
 └────│────────────────────────────────────┘
      │
@@ -280,16 +183,6 @@ docker compose logs mcp-sap-adt
 
 # Verificar que el health check pasa
 docker compose ps
-```
-
-### nginx da error de certificado
-
-```bash
-# Verificar que los certificados existen
-ls nginx/certs/
-
-# Verificar validez del certificado
-openssl x509 -in nginx/certs/server.crt -noout -dates
 ```
 
 ### No se puede conectar a SAP

@@ -60,11 +60,11 @@ class SAPMiddleware(Middleware):
         call_next: Callable[[MiddlewareContext[Any]], Awaitable[Any]],
     ) -> Any:
 
-        # Extract SAP credentials from request headers
+        # Extract SAP credentials: headers take priority, env vars as fallback
         headers = get_http_headers()
-        credentials = SAPCredentials.from_headers(headers)
+        credentials = SAPCredentials.from_headers(headers) or SAPCredentials.from_env()
 
-        # If credentials provided, get/create connection from pool
+        # If credentials available, get/create connection from pool
         if credentials:
             try:
                 client = adt_pool.get_or_create(

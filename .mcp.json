@@ -2,13 +2,7 @@
   "mcpServers": {
     "sap-adt": {
       "type": "http",
-      "url": "http://localhost/mcp/",
-      "headers": {
-        "x-hostname": "https://172.16.102.41:20400/",
-        "x-username": "mgarcia",
-        "x-password": "${SAP_PASSWORD}",
-        "x-client": "100"
-      }
+      "url": "http://localhost:8001/mcp/"
     }
   }
 }

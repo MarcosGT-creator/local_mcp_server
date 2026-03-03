@@ -130,6 +130,7 @@ class AdtClient:
         self.request_number: int = 0
         self.statefulness: Literal["stateless", "stateful"] = "stateless"
         self.session = requests.Session()
+        self.session.verify = False
 
         # Set up authentication with pre-encoded token
         self.session.auth = PreEncodedBasicAuth(basic_auth_token)

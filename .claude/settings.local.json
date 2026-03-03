@@ -9,7 +9,14 @@
       "Bash(claude mcp:*)",
       "mcp__sap-adt__search_object",
       "Bash(docker logs:*)",
-      "Bash(Remove-Item -Path \"C:\\\\Users\\\\mgarcia\\\\Proyectos\\\\local_mcp_server\\\\app\\\\src\\\\sap_mcp\\\\tools\\\\connection.py\" -Force)"
+      "Bash(Remove-Item -Path \"C:\\\\Users\\\\mgarcia\\\\Proyectos\\\\local_mcp_server\\\\app\\\\src\\\\sap_mcp\\\\tools\\\\connection.py\" -Force)",
+      "Bash(docker compose up:*)",
+      "Bash(docker compose down:*)",
+      "Bash(docker compose:*)",
+      "Bash(curl:*)",
+      "Bash(docker exec:*)",
+      "Bash(timeout 5 bash -c 'while ! curl -s http://localhost:8001/health > /dev/null 2>&1; do sleep 1; done')",
+      "Bash(timeout 8 bash -c 'while ! curl -s http://localhost:8001/health > /dev/null 2>&1; do sleep 1; done')"
     ]
   },
   "enableAllProjectMcpServers": true,
