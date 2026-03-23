@@ -131,6 +131,9 @@ class AdtClient:
         self.statefulness: Literal["stateless", "stateful"] = "stateless"
         self.session = requests.Session()
         self.session.verify = False
+        # Maps lock_handle -> sap-contextid captured at lock time.
+        # Required to route unlock requests to the correct SAP work process.
+        self._lock_context_ids: dict = {}
 
         # Set up authentication with pre-encoded token
         self.session.auth = PreEncodedBasicAuth(basic_auth_token)
@@ -268,11 +271,16 @@ class AdtClient:
         self.statefulness = "stateful"
         http_request_parameters = self.build_request_parameters()
         response = lock(http_request_parameters, object_uri)
+        # Remember the sap-contextid so unlock can route to the same work process
+        if response.get('LOCK_HANDLE') and response.get('SAP_CONTEXT_ID'):
+            self._lock_context_ids[response['LOCK_HANDLE']] = response['SAP_CONTEXT_ID']
         return response
 
     def unlock(self, object_uri: str, lock_handle: str) -> bool:
+        self.statefulness = "stateful"  # unlock must use stateful session (same as lock)
         http_request_parameters = self.build_request_parameters()
-        response = unlock(http_request_parameters, object_uri, lock_handle)
+        context_id = self._lock_context_ids.pop(lock_handle, "")
+        response = unlock(http_request_parameters, object_uri, lock_handle, context_id=context_id)
         self.statefulness = "stateless"
         return response
 

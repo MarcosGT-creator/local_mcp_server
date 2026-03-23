@@ -16,7 +16,9 @@
       "Bash(curl:*)",
       "Bash(docker exec:*)",
       "Bash(timeout 5 bash -c 'while ! curl -s http://localhost:8001/health > /dev/null 2>&1; do sleep 1; done')",
-      "Bash(timeout 8 bash -c 'while ! curl -s http://localhost:8001/health > /dev/null 2>&1; do sleep 1; done')"
+      "Bash(timeout 8 bash -c 'while ! curl -s http://localhost:8001/health > /dev/null 2>&1; do sleep 1; done')",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)"
     ]
   },
   "enableAllProjectMcpServers": true,

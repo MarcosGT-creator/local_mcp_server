@@ -12,7 +12,7 @@ _LOCK_ACCEPT_HEADER = (
 
 class LockResult(TypedDict, total=False):
     """Result data from a lock operation.
-    
+
     Attributes:
         LOCK_HANDLE: Lock handle required for unlock and modify operations
         CORRNR: Transport request number (if object is already in a transport)
@@ -21,6 +21,7 @@ class LockResult(TypedDict, total=False):
         IS_LOCAL: Whether object is in a local package (X or empty)
         IS_LINK_UP: Link-up mode indicator
         MODIFICATION_SUPPORT: Modification support level
+        SAP_CONTEXT_ID: sap-contextid cookie value at lock time (for unlock routing)
     """
     LOCK_HANDLE: str
     CORRNR: str
@@ -29,33 +30,12 @@ class LockResult(TypedDict, total=False):
     IS_LOCAL: str
     IS_LINK_UP: str
     MODIFICATION_SUPPORT: str
+    SAP_CONTEXT_ID: str
 
 
 def lock(http_request_parameters: HttpRequestParameters, object_uri: str) -> LockResult:
     """Lock an SAP object for editing.
-    
-    Args:
-        http_request_parameters: HTTP request parameters
-        object_uri: URI of the object to lock
-        
-    Returns:
-        LockResult dictionary containing:
-        - LOCK_HANDLE: Required for unlock/modify operations
-        - CORRNR: Transport request number (if object already in transport)
-        - CORRUSER: Transport request owner
-        - CORRTEXT: Transport request description
-        - IS_LOCAL: 'X' if local package, empty otherwise
-        - Other metadata fields
-        
-    Raises:
-        Exception: If lock fails (e.g., locked by another user)
-        
-    Example:
-        >>> result = client.lock("/sap/bc/adt/oo/classes/zcl_test")
-        >>> print(f"Lock handle: {result['LOCK_HANDLE']}")
-        >>> if result.get('CORRNR'):
-        >>>     print(f"Already in transport: {result['CORRNR']}")
-        
+
     Note:
         Eclipse ADT does NOT send a Content-Type header for lock requests.
         Only the Accept header is sent with the SAP ADT lock result format.
@@ -70,14 +50,12 @@ def lock(http_request_parameters: HttpRequestParameters, object_uri: str) -> Loc
         accept=_LOCK_ACCEPT_HEADER,
     )
     if response.status_code == 200:
-        # Parse the full response to extract all lock information
         import xml.etree.ElementTree as ET
         root = ET.fromstring(response.text)
         data = root.find('.//DATA')
-        
+
         result: LockResult = {}
         if data is not None:
-            # Extract all available fields
             result['LOCK_HANDLE'] = data.findtext('LOCK_HANDLE', '')
             result['CORRNR'] = data.findtext('CORRNR', '')
             result['CORRUSER'] = data.findtext('CORRUSER', '')
@@ -85,10 +63,16 @@ def lock(http_request_parameters: HttpRequestParameters, object_uri: str) -> Loc
             result['IS_LOCAL'] = data.findtext('IS_LOCAL', '')
             result['IS_LINK_UP'] = data.findtext('IS_LINK_UP', '')
             result['MODIFICATION_SUPPORT'] = data.findtext('MODIFICATION_SUPPORT', '')
-        
+
+        # Capture sap-contextid from the session cookies AFTER the lock response.
+        # SAP uses this cookie for work-process affinity: the unlock MUST be sent
+        # with the same contextid that was active when the lock was created.
+        context_id = http_request_parameters['session'].cookies.get('sap-contextid', '')
+        result['SAP_CONTEXT_ID'] = context_id
+
         if not result.get('LOCK_HANDLE'):
             raise Exception(f"Failed to extract lock handle from response.\n{response.text}")
-            
+
         return result
     else:
         raise Exception(
@@ -97,31 +81,39 @@ def lock(http_request_parameters: HttpRequestParameters, object_uri: str) -> Loc
 
 
 def unlock(
-    http_request_parameters: HttpRequestParameters, object_uri: str, lock_handle: str
+    http_request_parameters: HttpRequestParameters,
+    object_uri: str,
+    lock_handle: str,
+    context_id: str = "",
 ) -> bool:
     """Unlock an SAP object after editing.
-    
+
     Args:
         http_request_parameters: HTTP request parameters
         object_uri: URI of the object to unlock
         lock_handle: Lock handle obtained from lock()
-        
-    Returns:
-        True if successful
-        
-    Note:
-        Unlock uses text/plain content-type as per SAP ADT standards.
+        context_id: sap-contextid captured at lock time. Required for correct
+                    SAP work-process routing (obtained from LockResult['SAP_CONTEXT_ID']).
     """
+    from urllib.parse import quote
+
+    # Pass sap-contextid as a per-request cookie (NOT written to session).
+    # SAP uses this cookie to route the unlock to the exact work process that
+    # holds the lock. Writing it to the session would contaminate subsequent
+    # stateless requests and cause ICMENOSESSION errors.
+    per_request_cookies = {"sap-contextid": context_id} if context_id else None
+
     response = request(
         http_request_parameters=http_request_parameters,
         uri=object_uri,
-        body="",
-        params={"_action": "UNLOCK", "lockHandle": lock_handle},
+        body=None,
+        params={"_action": "UNLOCK", "lockHandle": quote(lock_handle, safe="")},
         method="POST",
-        content_type="text/plain; charset=utf-8",
-        accept=_LOCK_ACCEPT_HEADER,
+        content_type=None,
+        accept="*/*",
+        cookies=per_request_cookies,
     )
-    if response.status_code == 200:
+    if response.status_code in (200, 204):
         return True
     else:
         raise Exception(
@@ -130,71 +122,52 @@ def unlock(
 
 
 def check_objects_lockable(
-    http_request_parameters: HttpRequestParameters, 
+    http_request_parameters: HttpRequestParameters,
     objects: List[Dict[str, str]]
 ) -> Dict[str, Any]:
     """
     Check if objects can be locked (i.e., not currently locked by anyone).
-    
+
     This function attempts to lock and immediately unlock each object to verify
     it's not locked. This is useful before bulk operations like activation.
-    
-    Args:
-        http_request_parameters: HTTP request parameters
-        objects: List of dicts with 'uri' and 'name' keys for each object
-        
-    Returns:
-        Dictionary with:
-        - 'lockable': List of object names that are not locked
-        - 'locked': List of object names that are currently locked
-        - 'errors': Dict of object names to error messages
-        
-    Example:
-        >>> status = check_objects_lockable(params, [
-        ...     {'uri': '/sap/bc/adt/oo/classes/zcl_test', 'name': 'ZCL_TEST'}
-        ... ])
-        >>> if status['locked']:
-        ...     print(f"Locked objects: {status['locked']}")
     """
     lockable = []
     locked = []
     errors = {}
-    
+
     for obj in objects:
         uri = obj.get('uri', '')
         name = obj.get('name', '')
-        
+
         if not uri or not name:
             continue
-            
+
         try:
-            # Try to lock the object
             lock_result = lock(http_request_parameters, uri)
             lock_handle = lock_result.get('LOCK_HANDLE', '')
-            
-            # If successful, immediately unlock it
+
             if lock_handle:
                 try:
-                    unlock(http_request_parameters, uri, lock_handle)
+                    unlock(
+                        http_request_parameters, uri, lock_handle,
+                        context_id=lock_result.get('SAP_CONTEXT_ID', '')
+                    )
                     lockable.append(name)
                 except Exception as unlock_err:
-                    # Even if unlock fails, the object was lockable
                     lockable.append(name)
                     errors[name] = f"Warning: Failed to unlock after check: {str(unlock_err)}"
             else:
                 locked.append(name)
                 errors[name] = "No lock handle returned"
-                
+
         except Exception as e:
             error_msg = str(e)
-            # Check if it's a lock conflict
             if "locked" in error_msg.lower() or "being edited" in error_msg.lower() or "409" in error_msg:
                 locked.append(name)
                 errors[name] = error_msg
             else:
-                # Other errors (permissions, not found, etc.)
                 errors[name] = error_msg
-    
+
     return {
         'lockable': lockable,
         'locked': locked,

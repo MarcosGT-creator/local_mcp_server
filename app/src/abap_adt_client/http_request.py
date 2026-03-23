@@ -14,10 +14,11 @@ def request(
     http_request_parameters: HttpRequestParameters,
     uri: str,
     method: Literal["GET", "POST", "PUT", "DELETE"],
-    body: str,
+    body: str | None,
     params: dict,
     content_type: str | None = "application/xml",
     accept: str = "*/*",
+    cookies: dict | None = None,
 ) -> requests.Response:
 
     # Add sap-client to params if not already present
@@ -41,6 +42,8 @@ def request(
         "url": http_request_parameters["host"] + uri,
         "data": body,
     }
+    if cookies:
+        config["cookies"] = cookies
 
     session = http_request_parameters["session"]
     if method == "POST":
