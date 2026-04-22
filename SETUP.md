@@ -30,6 +30,12 @@ docker compose build
 ## Paso 2: Levantar el servidor
 
 Las credenciales SAP se pasan directamente al arrancar el contenedor.
+Hosts:
+MTD: https://bfwin07.torres.es:1443/
+MTI:
+MTP:
+DS4: https://vhmtjds4ci.fra3.sap.torres.es:20400/
+QS4: https://vhmtjqs4ci.fra3.sap.torres.es:20400/
 
 ### PowerShell (recomendado en Windows) 
 
