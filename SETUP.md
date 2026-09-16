@@ -14,8 +14,10 @@ local_mcp_server/
 │   ├── requirements.txt        # Dependencias Python
 │   └── src/                    # Modulos del servidor
 ├── Dockerfile                  # Imagen del servidor MCP
-├── docker-compose.yml          # Orquestacion del contenedor
-├── start.ps1                   # Script de arranque (PowerShell)
+├── docker-compose.yml          # Orquestacion de un solo entorno
+├── docker-compose.dev-qas.yml  # Orquestacion de dos entornos (desarrollo + calidad)
+├── start.ps1                   # Arranque de un entorno (PowerShell)
+├── start_dev_qas.ps1           # Arranque de desarrollo + calidad a la vez (PowerShell)
 ├── .env                        # Variables de entorno (opcional, fallback)
 ├── .env.example                # Plantilla de variables de entorno
 └── .dockerignore               # Exclusiones del build context
@@ -76,6 +78,87 @@ Esto arranca:
 |----------------|--------------|---------|--------------------------|
 | `mcp-sap-adt`  | mcp-sap-adt  | 8001    | Servidor MCP Python      |
 
+## Paso 2 (alternativa): dos entornos a la vez, desarrollo y calidad
+
+Para trabajar contra DS4 y QS4 en la misma sesion, `start_dev_qas.ps1` levanta dos
+contenedores independientes, cada uno con sus credenciales y su propio puerto:
+
+```powershell
+./start_dev_qas.ps1 -Username "mgarcia" -Password "tu_password"
+```
+
+La primera vez, o tras cambiar codigo, hay que construir la imagen:
+
+```powershell
+./start_dev_qas.ps1 -Username "mgarcia" -Password "tu_password" -Build
+```
+
+Esto arranca:
+
+| Servicio          | Contenedor      | Puerto | Sistema SAP (default)                              |
+|-------------------|-----------------|--------|----------------------------------------------------|
+| `mcp-sap-adt-dev` | mcp-sap-adt-dev | 8001   | DS4 - https://vhmtjds4ci.fra3.sap.torres.es:20400/ |
+| `mcp-sap-adt-qas` | mcp-sap-adt-qas | 8002   | QS4 - https://vhmtjqs4ci.fra3.sap.torres.es:20400/ |
+
+Los tools MCP son los mismos en ambos servidores; lo unico que cambia es el sistema SAP
+destino. Al terminar, el script imprime el bloque de `.mcp.json` listo para copiar.
+
+### Sobrescribir valores por entorno
+
+`-Username`, `-Password` y `-Client` se aplican a los dos entornos. Cualquiera de los dos
+puede sobrescribirlos con sus propios parametros:
+
+| Parametro      | Default                                        | Descripcion                     |
+|----------------|------------------------------------------------|---------------------------------|
+| `-Username`    | (obligatorio)                                  | Usuario para ambos entornos     |
+| `-Password`    | (obligatorio)                                  | Password para ambos entornos    |
+| `-Client`      | `100`                                          | Client para ambos entornos      |
+| `-DevHostname` | `https://vhmtjds4ci.fra3.sap.torres.es:20400/` | Host SAP de desarrollo          |
+| `-DevUsername` | valor de `-Username`                           | Usuario solo en desarrollo      |
+| `-DevPassword` | valor de `-Password`                           | Password solo en desarrollo     |
+| `-DevClient`   | valor de `-Client`                             | Client solo en desarrollo       |
+| `-DevPort`     | `8001`                                         | Puerto del host para desarrollo |
+| `-QasHostname` | `https://vhmtjqs4ci.fra3.sap.torres.es:20400/` | Host SAP de calidad             |
+| `-QasUsername` | valor de `-Username`                           | Usuario solo en calidad         |
+| `-QasPassword` | valor de `-Password`                           | Password solo en calidad        |
+| `-QasClient`   | valor de `-Client`                             | Client solo en calidad          |
+| `-QasPort`     | `8002`                                         | Puerto del host para calidad    |
+
+Ejemplo con usuario y client distintos en calidad:
+
+```powershell
+./start_dev_qas.ps1 -DevUsername "mgarcia" -DevPassword "pass_des" -QasUsername "mgarcia_q" -QasPassword "pass_cal" -QasClient "200"
+```
+
+Ejemplo apuntando calidad a otro sistema, por ejemplo MTD, y moviendo los puertos:
+
+```powershell
+./start_dev_qas.ps1 -Username "mgarcia" -Password "tu_password" -QasHostname "https://bfwin07.torres.es:1443/" -DevPort 8011 -QasPort 8012
+```
+
+### Gestionar los dos servidores
+
+```powershell
+./start_dev_qas.ps1 -Status    # estado de los dos contenedores
+./start_dev_qas.ps1 -Logs      # logs de ambos en tiempo real
+./start_dev_qas.ps1 -Down      # parar y eliminar ambos
+```
+
+> El puerto de desarrollo es 8001, el mismo que usa `start.ps1`, para que un `.mcp.json`
+> ya existente siga valiendo. Los dos modos no pueden convivir: si el contenedor
+> `mcp-sap-adt` esta arrancado, el script lo detecta antes de intentar nada y aborta.
+> Hacer `docker compose down` primero, o usar `-DevPort` y `-QasPort` para moverlos.
+
+### Linux / macOS / Git Bash
+
+```bash
+DEV_SAP_HOSTNAME="https://vhmtjds4ci.fra3.sap.torres.es:20400/" DEV_SAP_USERNAME="mgarcia" DEV_SAP_PASSWORD="tu_password" DEV_SAP_CLIENT="100" \
+QAS_SAP_HOSTNAME="https://vhmtjqs4ci.fra3.sap.torres.es:20400/" QAS_SAP_USERNAME="mgarcia" QAS_SAP_PASSWORD="tu_password" QAS_SAP_CLIENT="100" \
+docker compose -f docker-compose.dev-qas.yml -p sap-mcp-dev-qas up -d
+```
+
+Los puertos del host se ajustan con `DEV_PORT` y `QAS_PORT` (default 8001 y 8002).
+
 ## Paso 3: Verificar que funciona
 
 ```bash
@@ -84,6 +167,13 @@ curl http://localhost:8001/health
 
 # Pool stats
 curl http://localhost:8001/pool-stats
+```
+
+Si has arrancado los dos entornos, comprobar tambien el de calidad:
+
+```bash
+curl http://localhost:8002/health
+curl http://localhost:8002/pool-stats
 ```
 
 ## Paso 4: Configurar el cliente MCP
@@ -113,6 +203,25 @@ claude
 ```
 
 Verificar con el comando `/mcp` dentro de Claude Code que el servidor aparece en la lista.
+
+Con los dos entornos hace falta una entrada por servidor. Los nombres (`sap-adt-dev` y
+`sap-adt-qas`) son los que apareceran como prefijo de cada tool, asi que conviene que
+dejen claro a que sistema apuntan:
+
+```json
+{
+  "mcpServers": {
+    "sap-adt-dev": {
+      "type": "http",
+      "url": "http://localhost:8001/mcp/"
+    },
+    "sap-adt-qas": {
+      "type": "http",
+      "url": "http://localhost:8002/mcp/"
+    }
+  }
+}
+```
 
 ### 4.2 Claude Desktop
 
@@ -159,6 +268,22 @@ docker compose up --build -d
 docker compose ps
 ```
 
+Con los dos entornos arrancados, el `docker compose` de arriba no los ve: viven en su
+propio proyecto Compose (`sap-mcp-dev-qas`). Hay que usar el script:
+
+```powershell
+./start_dev_qas.ps1 -Logs      # logs de ambos
+./start_dev_qas.ps1 -Status    # estado de ambos
+./start_dev_qas.ps1 -Down      # parar ambos
+```
+
+O Docker directamente, para actuar sobre uno solo:
+
+```bash
+docker logs -f mcp-sap-adt-dev
+docker restart mcp-sap-adt-qas
+```
+
 ## Arquitectura de red
 
 ```
@@ -179,6 +304,17 @@ Cliente MCP (Claude Desktop, Claude Code, etc.)
   SAP System (ADT REST API)
 ```
 
+Con dos entornos, cada contenedor tiene sus propias credenciales y su propio pool de
+conexiones; no comparten nada mas que la imagen Docker:
+
+```
+Cliente MCP (dos servidores configurados)
+    │
+    ├── HTTP :8001 ──▶ mcp-sap-adt-dev ──HTTPS──▶ SAP desarrollo (DS4)
+    │
+    └── HTTP :8002 ──▶ mcp-sap-adt-qas ──HTTPS──▶ SAP calidad (QS4)
+```
+
 ## Troubleshooting
 
 ### El servidor no arranca
@@ -190,6 +326,39 @@ docker compose logs mcp-sap-adt
 # Verificar que el health check pasa
 docker compose ps
 ```
+
+### El puerto ya esta ocupado
+
+`start_dev_qas.ps1` comprueba los puertos antes de arrancar e indica quien los tiene.
+La causa habitual es el contenedor de un solo entorno ocupando el 8001:
+
+```powershell
+docker compose down            # para el contenedor mcp-sap-adt
+./start_dev_qas.ps1 -Username "mgarcia" -Password "tu_password"
+```
+
+La alternativa es mover los servidores a otros puertos, recordando actualizar el
+`.mcp.json`:
+
+```powershell
+./start_dev_qas.ps1 -Username "mgarcia" -Password "tu_password" -DevPort 8011 -QasPort 8012
+```
+
+### Un entorno funciona y el otro no
+
+Al ser contenedores separados, conviene aislar cual falla:
+
+```bash
+docker logs mcp-sap-adt-dev
+docker logs mcp-sap-adt-qas
+
+# Confirmar a que sistema apunta cada uno
+docker exec mcp-sap-adt-dev sh -c 'echo $SAP_HOSTNAME $SAP_CLIENT $SAP_USERNAME'
+docker exec mcp-sap-adt-qas sh -c 'echo $SAP_HOSTNAME $SAP_CLIENT $SAP_USERNAME'
+```
+
+Si las credenciales no son validas en uno de los dos sistemas, ese servidor arranca y
+responde al health check igualmente: el fallo aparece al invocar un tool, no antes.
 
 ### No se puede conectar a SAP
 

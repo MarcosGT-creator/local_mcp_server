@@ -1,0 +1,39 @@
+# Dos servidores MCP en paralelo: uno apuntando a DES y otro a CAL.
+# Uso: ./start_dev_qas.ps1 -Username "user" -Password "pass"
+#      docker compose -f docker-compose.dev-qas.yml -p sap-mcp-dev-qas up -d
+
+x-mcp-sap-adt: &mcp-sap-adt
+  build: .
+  image: mcp-sap-adt:local
+  restart: unless-stopped
+  healthcheck:
+    test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+    interval: 30s
+    timeout: 10s
+    retries: 3
+    start_period: 15s
+
+services:
+  mcp-sap-adt-dev:
+    <<: *mcp-sap-adt
+    container_name: mcp-sap-adt-dev
+    ports:
+      - "${DEV_PORT:-8001}:8001"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - SAP_HOSTNAME=${DEV_SAP_HOSTNAME}
+      - SAP_USERNAME=${DEV_SAP_USERNAME}
+      - SAP_PASSWORD=${DEV_SAP_PASSWORD}
+      - SAP_CLIENT=${DEV_SAP_CLIENT:-100}
+
+  mcp-sap-adt-qas:
+    <<: *mcp-sap-adt
+    container_name: mcp-sap-adt-qas
+    ports:
+      - "${QAS_PORT:-8002}:8001"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - SAP_HOSTNAME=${QAS_SAP_HOSTNAME}
+      - SAP_USERNAME=${QAS_SAP_USERNAME}
+      - SAP_PASSWORD=${QAS_SAP_PASSWORD}
+      - SAP_CLIENT=${QAS_SAP_CLIENT:-100}

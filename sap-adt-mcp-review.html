@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eval Review</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600&family=Lora:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" integrity="sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT" crossorigin="anonymous"></script>
+  <style>
+    :root {
+      --bg: #faf9f5;
+      --surface: #ffffff;
+      --border: #e8e6dc;
+      --text: #141413;
+      --text-muted: #b0aea5;
+      --accent: #d97757;
+      --accent-hover: #c4613f;
+      --green: #788c5d;
+      --green-bg: #eef2e8;
+      --red: #c44;
+      --red-bg: #fceaea;
+      --header-bg: #141413;
+      --header-text: #faf9f5;
+      --radius: 6px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Lora', Georgia, serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ---- Header ---- */
+    .header {
+      background: var(--header-bg);
+      color: var(--header-text);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .header h1 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+    .header .instructions {
+      font-size: 0.8rem;
+      opacity: 0.7;
+      margin-top: 0.25rem;
+    }
+    .header .progress {
+      font-size: 0.875rem;
+      opacity: 0.8;
+      text-align: right;
+    }
+
+    /* ---- Main content ---- */
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    /* ---- Sections ---- */
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      flex-shrink: 0;
+    }
+    .section-header {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.75rem 1rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .section-body {
+      padding: 1rem;
+    }
+
+    /* ---- Config badge ---- */
+    .config-badge {
+      display: inline-block;
+      padding: 0.2rem 0.625rem;
+      border-radius: 9999px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      margin-left: 0.75rem;
+      vertical-align: middle;
+    }
+    .config-badge.config-primary {
+      background: rgba(33, 150, 243, 0.12);
+      color: #1976d2;
+    }
+    .config-badge.config-baseline {
+      background: rgba(255, 193, 7, 0.15);
+      color: #f57f17;
+    }
+
+    /* ---- Prompt ---- */
+    .prompt-text {
+      white-space: pre-wrap;
+      font-size: 0.9375rem;
+      line-height: 1.6;
+    }
+
+    /* ---- Outputs ---- */
+    .output-file {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .output-file + .output-file {
+      margin-top: 1rem;
+    }
+    .output-file-header {
+      padding: 0.5rem 0.75rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .output-file-header .dl-btn {
+      font-size: 0.7rem;
+      color: var(--accent);
+      text-decoration: none;
+      cursor: pointer;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-weight: 500;
+      opacity: 0.8;
+    }
+    .output-file-header .dl-btn:hover {
+      opacity: 1;
+      text-decoration: underline;
+    }
+    .output-file-content {
+      padding: 0.75rem;
+      overflow-x: auto;
+    }
+    .output-file-content pre {
+      font-size: 0.8125rem;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+    }
+    .output-file-content img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 4px;
+    }
+    .output-file-content iframe {
+      width: 100%;
+      height: 600px;
+      border: none;
+    }
+    .output-file-content table {
+      border-collapse: collapse;
+      font-size: 0.8125rem;
+      width: 100%;
+    }
+    .output-file-content table td,
+    .output-file-content table th {
+      border: 1px solid var(--border);
+      padding: 0.375rem 0.5rem;
+      text-align: left;
+    }
+    .output-file-content table th {
+      background: var(--bg);
+      font-weight: 600;
+    }
+    .output-file-content .download-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 0.875rem;
+      cursor: pointer;
+    }
+    .output-file-content .download-link:hover {
+      background: var(--border);
+    }
+    .empty-state {
+      color: var(--text-muted);
+      font-style: italic;
+      padding: 2rem;
+      text-align: center;
+    }
+
+    /* ---- Feedback ---- */
+    .prev-feedback {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.625rem 0.75rem;
+      margin-top: 0.75rem;
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .prev-feedback-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 0.25rem;
+      color: var(--text-muted);
+    }
+    .feedback-textarea {
+      width: 100%;
+      min-height: 100px;
+      padding: 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 0.9375rem;
+      line-height: 1.5;
+      resize: vertical;
+      color: var(--text);
+    }
+    .feedback-textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+    .feedback-status {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.5rem;
+      min-height: 1.1em;
+    }
+
+    /* ---- Grades (collapsible) ---- */
+    .grades-toggle {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+    }
+    .grades-toggle:hover {
+      color: var(--accent);
+    }
+    .grades-toggle .arrow {
+      margin-right: 0.5rem;
+      transition: transform 0.15s;
+      font-size: 0.75rem;
+    }
+    .grades-toggle .arrow.open {
+      transform: rotate(90deg);
+    }
+    .grades-content {
+      display: none;
+      margin-top: 0.75rem;
+    }
+    .grades-content.open {
+      display: block;
+    }
+    .grades-summary {
+      font-size: 0.875rem;
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .grade-badge {
+      display: inline-block;
+      padding: 0.125rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .grade-pass { background: var(--green-bg); color: var(--green); }
+    .grade-fail { background: var(--red-bg); color: var(--red); }
+    .assertion-list {
+      list-style: none;
+    }
+    .assertion-item {
+      padding: 0.625rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.8125rem;
+    }
+    .assertion-item:last-child { border-bottom: none; }
+    .assertion-status {
+      font-weight: 600;
+      margin-right: 0.5rem;
+    }
+    .assertion-status.pass { color: var(--green); }
+    .assertion-status.fail { color: var(--red); }
+    .assertion-evidence {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      margin-top: 0.25rem;
+      padding-left: 1.5rem;
+    }
+
+    /* ---- View tabs ---- */
+    .view-tabs {
+      display: flex;
+      gap: 0;
+      padding: 0 2rem;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .view-tab {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.625rem 1.25rem;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      background: none;
+      color: var(--text-muted);
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .view-tab:hover { color: var(--text); }
+    .view-tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+    .view-panel { display: none; }
+    .view-panel.active { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+
+    /* ---- Benchmark view ---- */
+    .benchmark-view {
+      padding: 1.5rem 2rem;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .benchmark-table {
+      border-collapse: collapse;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 0.8125rem;
+      width: 100%;
+      margin-bottom: 1.5rem;
+    }
+    .benchmark-table th, .benchmark-table td {
+      padding: 0.625rem 0.75rem;
+      text-align: left;
+      border: 1px solid var(--border);
+    }
+    .benchmark-table th {
+      font-family: 'Poppins', sans-serif;
+      background: var(--header-bg);
+      color: var(--header-text);
+      font-weight: 500;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .benchmark-table tr:hover { background: var(--bg); }
+    .benchmark-table tr.benchmark-row-with { background: rgba(33, 150, 243, 0.06); }
+    .benchmark-table tr.benchmark-row-without { background: rgba(255, 193, 7, 0.06); }
+    .benchmark-table tr.benchmark-row-with:hover { background: rgba(33, 150, 243, 0.12); }
+    .benchmark-table tr.benchmark-row-without:hover { background: rgba(255, 193, 7, 0.12); }
+    .benchmark-table tr.benchmark-row-avg { font-weight: 600; border-top: 2px solid var(--border); }
+    .benchmark-table tr.benchmark-row-avg.benchmark-row-with { background: rgba(33, 150, 243, 0.12); }
+    .benchmark-table tr.benchmark-row-avg.benchmark-row-without { background: rgba(255, 193, 7, 0.12); }
+    .benchmark-delta-positive { color: var(--green); font-weight: 600; }
+    .benchmark-delta-negative { color: var(--red); font-weight: 600; }
+    .benchmark-notes {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+    }
+    .benchmark-notes h3 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.875rem;
+      margin-bottom: 0.75rem;
+    }
+    .benchmark-notes ul {
+      list-style: disc;
+      padding-left: 1.25rem;
+    }
+    .benchmark-notes li {
+      font-size: 0.8125rem;
+      line-height: 1.6;
+      margin-bottom: 0.375rem;
+    }
+    .benchmark-empty {
+      color: var(--text-muted);
+      font-style: italic;
+      text-align: center;
+      padding: 3rem;
+    }
+
+    /* ---- Navigation ---- */
+    .nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 2rem;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+    .nav-btn {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.5rem 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text);
+      transition: all 0.15s;
+    }
+    .nav-btn:hover:not(:disabled) {
+      background: var(--bg);
+      border-color: var(--text-muted);
+    }
+    .nav-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    .done-btn {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.5rem 1.5rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+    .done-btn:hover {
+      background: var(--bg);
+      border-color: var(--text-muted);
+    }
+    .done-btn.ready {
+      border: none;
+      background: var(--accent);
+      color: white;
+      font-weight: 600;
+    }
+    .done-btn.ready:hover {
+      background: var(--accent-hover);
+    }
+    /* ---- Done overlay ---- */
+    .done-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+    }
+    .done-overlay.visible {
+      display: flex;
+    }
+    .done-card {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 2rem 3rem;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 500px;
+    }
+    .done-card h2 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+    .done-card p {
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+      line-height: 1.5;
+    }
+    .done-card .btn-row {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+    }
+    .done-card button {
+      padding: 0.5rem 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 0.875rem;
+    }
+    .done-card button:hover {
+      background: var(--bg);
+    }
+    /* ---- Toast ---- */
+    .toast {
+      position: fixed;
+      bottom: 5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--header-bg);
+      color: var(--header-text);
+      padding: 0.625rem 1.25rem;
+      border-radius: var(--radius);
+      font-size: 0.875rem;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      z-index: 200;
+    }
+    .toast.visible {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div id="app" style="height:100vh; display:flex; flex-direction:column;">
+    <div class="header">
+      <div>
+        <h1>Eval Review: <span id="skill-name"></span></h1>
+        <div class="instructions">Review each output and leave feedback below. Navigate with arrow keys or buttons. When done, copy feedback and paste into Claude Code.</div>
+      </div>
+      <div class="progress" id="progress"></div>
+    </div>
+
+    <!-- View tabs (only shown when benchmark data exists) -->
+    <div class="view-tabs" id="view-tabs" style="display:none;">
+      <button class="view-tab active" onclick="switchView('outputs')">Outputs</button>
+      <button class="view-tab" onclick="switchView('benchmark')">Benchmark</button>
+    </div>
+
+    <!-- Outputs panel (qualitative review) -->
+    <div class="view-panel active" id="panel-outputs">
+    <div class="main">
+      <!-- Prompt -->
+      <div class="section">
+        <div class="section-header">Prompt <span class="config-badge" id="config-badge" style="display:none;"></span></div>
+        <div class="section-body">
+          <div class="prompt-text" id="prompt-text"></div>
+        </div>
+      </div>
+
+      <!-- Outputs -->
+      <div class="section">
+        <div class="section-header">Output</div>
+        <div class="section-body" id="outputs-body">
+          <div class="empty-state">No output files found</div>
+        </div>
+      </div>
+
+      <!-- Previous Output (collapsible) -->
+      <div class="section" id="prev-outputs-section" style="display:none;">
+        <div class="section-header">
+          <div class="grades-toggle" onclick="togglePrevOutputs()">
+            <span class="arrow" id="prev-outputs-arrow">&#9654;</span>
+            Previous Output
+          </div>
+        </div>
+        <div class="grades-content" id="prev-outputs-content"></div>
+      </div>
+
+      <!-- Grades (collapsible) -->
+      <div class="section" id="grades-section" style="display:none;">
+        <div class="section-header">
+          <div class="grades-toggle" onclick="toggleGrades()">
+            <span class="arrow" id="grades-arrow">&#9654;</span>
+            Formal Grades
+          </div>
+        </div>
+        <div class="grades-content" id="grades-content"></div>
+      </div>
+
+      <!-- Feedback -->
+      <div class="section">
+        <div class="section-header">Your Feedback</div>
+        <div class="section-body">
+          <textarea
+            class="feedback-textarea"
+            id="feedback"
+            placeholder="What do you think of this output? Any issues, suggestions, or things that look great?"
+          ></textarea>
+          <div class="feedback-status" id="feedback-status"></div>
+          <div class="prev-feedback" id="prev-feedback" style="display:none;">
+            <div class="prev-feedback-label">Previous feedback</div>
+            <div id="prev-feedback-text"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav" id="outputs-nav">
+      <button class="nav-btn" id="prev-btn" onclick="navigate(-1)">&#8592; Previous</button>
+      <button class="done-btn" id="done-btn" onclick="showDoneDialog()">Submit All Reviews</button>
+      <button class="nav-btn" id="next-btn" onclick="navigate(1)">Next &#8594;</button>
+    </div>
+    </div><!-- end panel-outputs -->
+
+    <!-- Benchmark panel (quantitative stats) -->
+    <div class="view-panel" id="panel-benchmark">
+      <div class="benchmark-view" id="benchmark-content">
+        <div class="benchmark-empty">No benchmark data available. Run a benchmark to see quantitative results here.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Done overlay -->
+  <div class="done-overlay" id="done-overlay">
+    <div class="done-card">
+      <h2>Review Complete</h2>
+      <p>Your feedback has been saved. Go back to your Claude Code session and tell Claude you're done reviewing.</p>
+      <div class="btn-row">
+        <button onclick="closeDoneDialog()">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ---- Embedded data (injected by generate_review.py) ----
+    const EMBEDDED_DATA = {"skill_name": "sap-adt-mcp", "runs": [{"id": "eval-0-fix-bug-in-existing-class-with_skill", "prompt": "The sap-adt-mcp MCP server is connected and ready. There's a bug in the method `get_orders` of class `ZCL_CUSTOMER_API` (in package `ZSD_API`): it's returning orders for inactive customers too. I need you to change the WHERE clause so it filters `active = abap_true`. Write out the exact sequence of `sap-adt-mcp` tool calls you would make \u2014 with full parameter values \u2014 to apply the fix, validate it, release the lock, and activate the class. Assume the class is in a transportable package and no TR exists yet for this object. Use realistic placeholder values (URIs, names, lock handles, TR numbers) where the output of one call feeds the next.", "eval_id": 0, "outputs": [{"name": "plan.md", "type": "text", "content": "# Plan: Fix `get_orders` in `ZCL_CUSTOMER_API` (package `ZSD_API`)\n\n## High-level strategy\n\nThe class lives in the transportable package `ZSD_API` and no TR exists for it yet, so the sequence is:\n\n1. Locate the class (get its URI).\n2. Check transport availability; if none exists, create one and attach the object.\n3. Lock the class (stateful session begins; `CORRNR` now populated).\n4. Read current source to find the offending `WHERE` clause.\n5. Write corrected source back.\n6. Syntax-check while still locked (so we can re-fix without re-locking if it fails).\n7. Unlock.\n8. Activate.\n\nPlaceholder values threaded through the calls:\n\n- `URI = \"/sap/bc/adt/oo/classes/zcl_customer_api\"`\n- `NAME = \"ZCL_CUSTOMER_API\"`\n- `TRKORR = \"D2AK904120\"` (returned by `create_transport_and_assign`)\n- `LOCK_HANDLE = \"A2BC3D\"` (returned by `lock_object`)\n- `CORRNR = \"D2AK904121\"` (child task, returned by `lock_object` once TR exists)\n\n---\n\n## Step-by-step tool calls\n\n### 1. Find the class and capture its URI\n\n```python\nresult = search_object(\n    query=\"ZCL_CUSTOMER_API\",\n    object_type=\"CLAS/OC\",\n    max_results=10,\n)\n# Expected: result[0] = {\n#   \"name\": \"ZCL_CUSTOMER_API\",\n#   \"type\": \"CLAS/OC\",\n#   \"uri\": \"/sap/bc/adt/oo/classes/zcl_customer_api\",\n#   \"packageName\": \"ZSD_API\",\n#   \"description\": \"Customer API \u2014 facade for Z* order services\",\n# }\nURI  = \"/sap/bc/adt/oo/classes/zcl_customer_api\"\nNAME = \"ZCL_CUSTOMER_API\"\n```\n\n### 2. Check whether a usable transport already exists\n\n```python\ntc = transport_check(object_uri=\"/sap/bc/adt/oo/classes/zcl_customer_api\")\n# Expected (per task statement \u2014 no TR yet):\n# tc = {\n#   \"PGMID\": \"R3TR\",\n#   \"OBJECT\": \"CLAS\",\n#   \"OBJECTNAME\": \"ZCL_CUSTOMER_API\",\n#   \"DEVCLASS\": \"ZSD_API\",\n#   \"REQUESTS\": []           # empty \u2192 we must create a TR\n# }\n```\n\n### 3. Create a transport and attach the class to it in one shot\n\nSince `REQUESTS` is empty, use `create_transport_and_assign` (creates TR + attaches object; the simplest path when we're editing a single object).\n\n```python\ntr = create_transport_and_assign(\n    devclass=\"ZSD_API\",\n    request_text=\"Fix ZCL_CUSTOMER_API.get_orders: filter inactive customers\",\n    ref=\"/sap/bc/adt/oo/classes/zcl_customer_api\",\n)\n# Expected:\n# tr = {\"TRKORR\": \"D2AK904120\", \"MESSAGES\": [...]}\nTRKORR = \"D2AK904120\"\n```\n\n### 4. Lock the class (CORRNR will now be populated)\n\n```python\nlock = lock_object(object_uri=\"/sap/bc/adt/oo/classes/zcl_customer_api\")\n# Expected:\n# lock = {\n#   \"LOCK_HANDLE\": \"A2BC3D\",\n#   \"CORRNR\": \"D2AK904121\",        # child task under TRKORR D2AK904120\n#   \"CORRUSER\": \"MGARCIA\",\n#   \"CORRTEXT\": \"Fix ZCL_CUSTOMER_API.get_orders: filter inactive customers\",\n#   \"IS_LOCAL\": \"\",\n#   \"SAP_CONTEXT_ID\": \"...\",\n# }\nLOCK_HANDLE = \"A2BC3D\"\nCORRNR      = \"D2AK904121\"\n```\n\n### 5. Read the current inactive source to find the bad WHERE clause\n\n```python\ncurrent = get_object_source(\n    object_uri=\"/sap/bc/adt/oo/classes/zcl_customer_api\",\n    version=\"inactive\",\n)\n# `current` is the full class source. We look for the METHOD get_orders\n# implementation and its offending SELECT, e.g.:\n#\n#   METHOD get_orders.\n#     SELECT order_id, customer_id, order_date, amount\n#       FROM zorders\n#       INTO TABLE @rt_orders\n#       WHERE customer_id = @iv_customer_id.      \"  <-- bug: no active filter\n#   ENDMETHOD.\n```\n\n### 6. Build the corrected source (full replacement \u2014 `set_object_source` is not a patch)\n\n```python\nnew_source = current.replace(\n    \"WHERE customer_id = @iv_customer_id.\",\n    \"WHERE customer_id = @iv_customer_id\\n\"\n    \"        AND active      = @abap_true.\",\n)\n```\n\n(If the WHERE clause wording in the real source differs, adjust the `.replace` pair to\nmatch the exact text read in step 5. The important invariant: the corrected clause adds\n`AND active = abap_true`.)\n\n### 7. Save the new source under the lock + transport\n\n```python\nset_object_source(\n    object_uri=\"/sap/bc/adt/oo/classes/zcl_customer_api\",\n    source_code=new_source,\n    lock_handle=\"A2BC3D\",\n    corr_nr=\"D2AK904121\",\n)\n```\n\n### 8. Syntax-check BEFORE unlocking\n\n```python\ncheck = syntax_check(\n    object_uri=\"/sap/bc/adt/oo/classes/zcl_customer_api\",\n    source_code=new_source,\n    version=\"inactive\",\n)\n# Expected: \"Syntax check passed\"\n# If it returns errors, fix `new_source` and re-call set_object_source + syntax_check\n# WITHOUT unlocking. Only proceed once it passes.\n```\n\n### 9. Release the lock\n\n```python\nunlock_object(\n    object_uri=\"/sap/bc/adt/oo/classes/zcl_customer_api\",\n    lock_handle=\"A2BC3D\",\n)\n# Expected: True\n```\n\n### 10. Activate the class\n\n```python\nactivate_object(\n    object_name=\"ZCL_CUSTOMER_API\",\n    object_uri=\"/sap/bc/adt/oo/classes/zcl_customer_api\",\n)\n# Expected: success message. Class is now compiled and the fix is live.\n```\n\n---\n\n## Final report to the user (after execution)\n\n> Updated `ZCL_CUSTOMER_API` (method `get_orders`) \u2014 added `AND active = abap_true` to the\n> WHERE clause. Syntax check passed, class activated. Changes captured in transport\n> `D2AK904120` (task `D2AK904121`), ready for you to release from SAP GUI / Eclipse ADT\n> when you're ready to ship.\n\n---\n\n## Error-recovery branches (only if something goes wrong)\n\n- **Step 7 returns \"no transport available\"** (shouldn't happen since we created one in\n  step 3, but defensively): `unlock_object` \u2192 re-run `create_transport_and_assign` \u2192\n  `lock_object` again \u2192 retry `set_object_source` with the new `CORRNR`.\n- **Step 8 returns syntax errors**: stay locked, edit `new_source`, re-run\n  `set_object_source` and `syntax_check`. Only unlock once clean.\n- **Step 4 fails because another user holds the lock**: report the lock owner\n  (`CORRUSER`) from the error and stop \u2014 do not force-unlock.\n- **Step 10 activation fails**: inspect `get_inactive_objects` and re-try with\n  `activate_multiple_objects` if there are dependent objects to activate together.\n"}], "grading": {"eval_id": 0, "eval_name": "fix-bug-in-existing-class", "config": "with_skill", "expectations": [{"text": "Plan uses `search_object` to locate the class (or explicitly skips it only if URI is already known)", "passed": true, "evidence": "search_object call found"}, {"text": "Plan creates a transport via `create_transport_and_assign` or `create_transport_organizer` (task says no TR exists yet)", "passed": true, "evidence": "transport creation call present"}, {"text": "Plan calls `lock_object` and captures a LOCK_HANDLE placeholder", "passed": true, "evidence": "lock_object + LOCK_HANDLE capture present"}, {"text": "`set_object_source` call includes the lock_handle parameter", "passed": true, "evidence": "set_object_source call includes lock_handle"}, {"text": "`syntax_check` appears BEFORE `unlock_object` in the sequence", "passed": true, "evidence": "syntax_check precedes unlock_object"}, {"text": "`unlock_object` appears BEFORE `activate_object`", "passed": true, "evidence": "unlock_object precedes activate_object"}, {"text": "Plan ends with `activate_object` passing both object_name and object_uri", "passed": true, "evidence": "activate_object includes both name and uri"}, {"text": "Uses lowercase URI (e.g. /sap/bc/adt/oo/classes/zcl_customer_api) and uppercase NAME (ZCL_CUSTOMER_API) consistently", "passed": true, "evidence": "lowercase URI + uppercase NAME present"}], "pass_count": 8, "total": 8}}, {"id": "eval-0-fix-bug-in-existing-class-without_skill", "prompt": "The sap-adt-mcp MCP server is connected and ready. There's a bug in the method `get_orders` of class `ZCL_CUSTOMER_API` (in package `ZSD_API`): it's returning orders for inactive customers too. I need you to change the WHERE clause so it filters `active = abap_true`. Write out the exact sequence of `sap-adt-mcp` tool calls you would make \u2014 with full parameter values \u2014 to apply the fix, validate it, release the lock, and activate the class. Assume the class is in a transportable package and no TR exists yet for this object. Use realistic placeholder values (URIs, names, lock handles, TR numbers) where the output of one call feeds the next.", "eval_id": 0, "outputs": [{"name": "plan.md", "type": "text", "content": "# Plan: Fix `get_orders` bug in `ZCL_CUSTOMER_API`\n\n**Goal:** Change the `WHERE` clause in `ZCL_CUSTOMER_API->get_orders( )` so it filters `active = abap_true`, then validate, release the lock, and activate the class. The class lives in package `ZSD_API` (transportable), and no TR exists yet for this object.\n\n---\n\n## Conventions used for threaded placeholder values\n\n| Placeholder        | Value                                               | Origin                        |\n|--------------------|-----------------------------------------------------|-------------------------------|\n| Class URI          | `/sap/bc/adt/oo/classes/zcl_customer_api`           | from `search_object`          |\n| Main include URI   | `/sap/bc/adt/oo/classes/zcl_customer_api/source/main` | standard ABAP OO convention   |\n| Lock handle        | `A2BC3D`                                            | returned by `lock_object`     |\n| Transport (TRKORR) | `D2AK904120`                                        | returned by `create_transport_and_assign` |\n| Package            | `ZSD_API`                                           | given                         |\n| Object type        | `CLAS/OC`                                           | standard ADT class type       |\n\n---\n\n## Step 0 - (Optional) Locate the class\n\nOnly needed if we don't already know the exact URI. The SAP MCP middleware auto-authenticates from the request headers (`x-hostname`, `x-username`, `x-password`, `x-client`), so an explicit `connect_to_sap` call is not required.\n\n### 1. `search_object`\n```python\nsearch_object(\n    query=\"ZCL_CUSTOMER_API\",\n    object_type=\"CLAS/OC\",   # ABAP Classes\n    max_results=10\n)\n```\n**Expected result (used below):**\n```json\n[\n  {\n    \"name\": \"ZCL_CUSTOMER_API\",\n    \"type\": \"CLAS/OC\",\n    \"package\": \"ZSD_API\",\n    \"uri\": \"/sap/bc/adt/oo/classes/zcl_customer_api\",\n    \"description\": \"Customer API\"\n  }\n]\n```\n\n---\n\n## Step 1 - Inspect current source\n\n### 2. `get_object_source`\n```python\nget_object_source(\n    object_uri=\"/sap/bc/adt/oo/classes/zcl_customer_api/source/main\",\n    version=\"active\"\n)\n```\nReturns the full source of the class (global class + methods). Locate the `METHOD get_orders.` block; it currently looks something like:\n```abap\nMETHOD get_orders.\n  SELECT order_id, customer_id, order_date, amount\n    FROM zorders\n    INTO TABLE @rt_orders\n   WHERE customer_id = @iv_customer_id.\nENDMETHOD.\n```\nWe will change the `WHERE` clause to also filter on `active = abap_true`.\n\n---\n\n## Step 2 - Lock the class (switches to stateful session)\n\n### 3. `lock_object`\n```python\nlock_object(\n    object_uri=\"/sap/bc/adt/oo/classes/zcl_customer_api\",\n    access_mode=\"MODIFY\"\n)\n```\n**Expected result:**\n```json\n{\n  \"lock_handle\": \"A2BC3D\",\n  \"corr_nr_required\": true,\n  \"corr_nr\": null,\n  \"is_modifiable\": true,\n  \"transport_required\": true\n}\n```\n`transport_required=true` and `corr_nr=null` confirm we need to create a TR.\n\n---\n\n## Step 3 - Create a transport request and assign the object\n\nBecause the package is transportable and no TR exists yet, we create one tied to the object. Using `create_transport_and_assign` ensures the object is registered in the TR automatically.\n\n### 4. `create_transport_and_assign`\n```python\ncreate_transport_and_assign(\n    object_uri=\"/sap/bc/adt/oo/classes/zcl_customer_api\",\n    description=\"Fix ZCL_CUSTOMER_API.get_orders: filter active customers only\",\n    transport_type=\"K\",      # Workbench request\n    target_system=\"\"         # default per landscape (usually dev target config)\n)\n```\n**Expected result:**\n```json\n{\n  \"trkorr\": \"D2AK904120\",\n  \"description\": \"Fix ZCL_CUSTOMER_API.get_orders: filter active customers only\",\n  \"owner\": \"MGARCIA\"\n}\n```\n\n---\n\n## Step 4 - Write the fixed source\n\nTake the source from Step 1 and replace the `get_orders` method body. The full updated source is sent back (ADT replaces the whole include).\n\n### 5. `set_object_source`\n```python\nset_object_source(\n    object_uri=\"/sap/bc/adt/oo/classes/zcl_customer_api/source/main\",\n    source=\"\"\"\nCLASS zcl_customer_api DEFINITION\n  PUBLIC\n  FINAL\n  CREATE PUBLIC .\n\n  PUBLIC SECTION.\n    TYPES: ty_orders TYPE STANDARD TABLE OF zorders WITH DEFAULT KEY.\n\n    METHODS get_orders\n      IMPORTING iv_customer_id TYPE zorders-customer_id\n      RETURNING VALUE(rt_orders) TYPE ty_orders.\n\n  PROTECTED SECTION.\n  PRIVATE SECTION.\nENDCLASS.\n\n\nCLASS zcl_customer_api IMPLEMENTATION.\n\n  METHOD get_orders.\n    SELECT order_id, customer_id, order_date, amount\n      FROM zorders\n      INTO TABLE @rt_orders\n     WHERE customer_id = @iv_customer_id\n       AND active      = @abap_true.\n  ENDMETHOD.\n\nENDCLASS.\n\"\"\",\n    lock_handle=\"A2BC3D\",\n    transport=\"D2AK904120\"\n)\n```\n\n---\n\n## Step 5 - Format (optional but tidy) and syntax check\n\n### 6. `format_source_code` (optional)\n```python\nformat_source_code(\n    source=\"<the source string we just sent>\"\n)\n```\nIf used, feed its output back through another `set_object_source` call with the same `lock_handle` and `transport`. Typically a developer skips this for a 2-line fix.\n\n### 7. `syntax_check`\n```python\nsyntax_check(\n    object_uri=\"/sap/bc/adt/oo/classes/zcl_customer_api/source/main\",\n    version=\"workingArea\"\n)\n```\n**Expected result:**\n```json\n{\"messages\": [], \"has_errors\": false}\n```\nIf errors are returned, fix them and re-call `set_object_source` (still under the same `lock_handle=\"A2BC3D\"` and `transport=\"D2AK904120\"`), then re-run `syntax_check`.\n\n---\n\n## Step 6 - Activate the class\n\nActivate while we still hold the lock. The MCP `activate_object` tool typically takes the object URI (and optionally the main include URI). ADT's inactive-CTS list for this user now contains the class.\n\n### 8. `activate_object`\n```python\nactivate_object(\n    object_uri=\"/sap/bc/adt/oo/classes/zcl_customer_api\",\n    object_name=\"ZCL_CUSTOMER_API\",\n    main_program=\"\"   # not applicable for classes\n)\n```\n**Expected result:**\n```json\n{\"activated\": true, \"messages\": []}\n```\nIf activation returns syntax / check errors, fix in source (`set_object_source` again with same lock + TR) and re-activate.\n\n---\n\n## Step 7 - Release the lock\n\n### 9. `unlock_object`\n```python\nunlock_object(\n    object_uri=\"/sap/bc/adt/oo/classes/zcl_customer_api\",\n    lock_handle=\"A2BC3D\"\n)\n```\n**Expected result:**\n```json\n{\"unlocked\": true}\n```\n\n---\n\n## Step 8 - (Optional) Verify the fix landed\n\n### 10. `get_object_source`\n```python\nget_object_source(\n    object_uri=\"/sap/bc/adt/oo/classes/zcl_customer_api/source/main\",\n    version=\"active\"\n)\n```\nConfirm the active version now contains `AND active = @abap_true`.\n\n### 11. `run_unit_test` (if the class has tests)\n```python\nrun_unit_test(\n    object_uri=\"/sap/bc/adt/oo/classes/zcl_customer_api\"\n)\n```\nConfirms regression tests still pass.\n\n---\n\n## Summary of the happy-path call sequence\n\n1. `search_object` -> URI `/sap/bc/adt/oo/classes/zcl_customer_api`\n2. `get_object_source` -> current source\n3. `lock_object` -> `lock_handle=\"A2BC3D\"`, transport required\n4. `create_transport_and_assign` -> `trkorr=\"D2AK904120\"`\n5. `set_object_source` (with `lock_handle`, `transport`) -> fixed source saved\n6. `syntax_check` -> clean\n7. `activate_object` -> activated\n8. `unlock_object` (with `lock_handle`) -> lock released\n9. `get_object_source` (active) -> verify fix\n10. (optional) `run_unit_test`\n\n## Error / rollback notes\n\n- If any step between `lock_object` and `unlock_object` fails fatally, still call `unlock_object(lock_handle=\"A2BC3D\")` to release server state. The transport `D2AK904120` can be reused for later corrections or released via SE09/`list_transports` workflows.\n- If `set_object_source` returns a lock-mismatch error, re-`lock_object` to get a fresh handle and retry.\n- If `activate_object` reports unresolved inactive dependencies (e.g. a DDIC object), use `get_inactive_objects` then `activate_multiple_objects` with the full list.\n"}], "grading": {"eval_id": 0, "eval_name": "fix-bug-in-existing-class", "config": "without_skill", "expectations": [{"text": "Plan uses `search_object` to locate the class (or explicitly skips it only if URI is already known)", "passed": true, "evidence": "search_object call found"}, {"text": "Plan creates a transport via `create_transport_and_assign` or `create_transport_organizer` (task says no TR exists yet)", "passed": true, "evidence": "transport creation call present"}, {"text": "Plan calls `lock_object` and captures a LOCK_HANDLE placeholder", "passed": true, "evidence": "lock_object + LOCK_HANDLE capture present"}, {"text": "`set_object_source` call includes the lock_handle parameter", "passed": true, "evidence": "set_object_source call includes lock_handle"}, {"text": "`syntax_check` appears BEFORE `unlock_object` in the sequence", "passed": true, "evidence": "syntax_check precedes unlock_object"}, {"text": "`unlock_object` appears BEFORE `activate_object`", "passed": false, "evidence": "unlock_object not before activate_object"}, {"text": "Plan ends with `activate_object` passing both object_name and object_uri", "passed": true, "evidence": "activate_object includes both name and uri"}, {"text": "Uses lowercase URI (e.g. /sap/bc/adt/oo/classes/zcl_customer_api) and uppercase NAME (ZCL_CUSTOMER_API) consistently", "passed": true, "evidence": "lowercase URI + uppercase NAME present"}], "pass_count": 7, "total": 8}}, {"id": "eval-1-preview-cds-view-data-with_skill", "prompt": "I want to preview the data of the CDS view `ZI_SALES_ORDER_HEADER` to check what order types we have in April 2026. Show me the tool calls I should run against `sap-adt-mcp` to (a) confirm the view exists and see its columns, and (b) query only the rows from April 2026, ordered by creation date. If the results could plausibly come back empty on our connected SAP client (110 is the dev client), mention that and how to handle it.", "eval_id": 1, "outputs": [{"name": "plan.md", "type": "text", "content": "# Plan \u2014 Preview data from CDS view `ZI_SALES_ORDER_HEADER` (April 2026)\n\nThis is a pure read-only, DDIC-layer task: no locks, no transports, no activation. We only need\ntwo tools from `sap-adt-mcp`:\n\n1. `search_object` + `get_ddic_object_metadata` to confirm the view exists and inspect its columns.\n2. `preview_ddic_data` to run a filtered `SELECT` for April 2026.\n\nCredentials already live in the MCP server (headers injected by the Docker container), so there\nis no need to call `connect_to_sap` unless something fails with a credentials error.\n\n---\n\n## (a) Confirm the view exists and see its columns\n\n### Step 1 \u2014 Verify the object really is a CDS view in the connected system\n\n`search_object` will return the canonical URI, the exact object type (`DDLS/DF` for a CDS DDL\nsource) and the package it lives in. This is cheap and avoids chasing a typo.\n\n```text\nTool: search_object\nArguments:\n  query: \"ZI_SALES_ORDER_HEADER\"\n  object_type: \"DDLS/DF\"\n  max_results: 5\n```\n\nExpected return shape (per-item):\n`{ name, type, uri, packageName, description }`. If the list is empty, the view either does not\nexist on client 110 or is named differently \u2014 retry with a wildcard such as\n`query: \"ZI_SALES_ORDER*\"` and no `object_type` filter.\n\n### Step 2 \u2014 Fetch the column list (names, ABAP types, key flag, length)\n\nPer the skill's DDIC reference, CDS views use `object_type=\"cds\"` here (this is the DDIC-tool\nargument, not the ADT search type).\n\n```text\nTool: get_ddic_object_metadata\nArguments:\n  object_name: \"ZI_SALES_ORDER_HEADER\"\n  object_type: \"cds\"\n```\n\nReturns XML with one entry per column (`name`, `camelCaseName`, `type`, `description`,\n`keyAttribute`, `colType`, `length`). From that output we identify:\n\n- the **order-type** column (likely `AUART` / `SALESORDERTYPE` / `ORDER_TYPE` \u2014 the exact name\n  depends on the view's element aliases),\n- the **creation-date** column (likely `ERDAT` / `CREATIONDATE` / `CREATION_DATE`),\n- the **key** columns (`keyAttribute=\"true\"`) \u2014 typically `VBELN` / `SALESORDER`.\n\nThe SQL in step (b) uses the literal column names exactly as they appear in the metadata XML.\nThe names below (`CREATIONDATE`, `SALESORDERTYPE`, `SALESORDER`) are placeholders \u2014 swap them\nfor whatever `get_ddic_object_metadata` returns.\n\n---\n\n## (b) Query April 2026 rows, ordered by creation date\n\n`preview_ddic_data` accepts SAP SQL. Date literals are plain unquoted 8-digit values\n(`YYYYMMDD`) for columns of ABAP type `DATS`, which is the standard type for creation dates in\nS/4 CDS views. If the metadata shows the date column is something unusual (e.g. a timestamp\n`DEC(15,0)` or `UTCLONG`), the filter will need adjusting \u2014 see the \"caveats\" note below.\n\n```text\nTool: preview_ddic_data\nArguments:\n  object_name: \"ZI_SALES_ORDER_HEADER\"\n  sql_query: |\n    SELECT SALESORDER, SALESORDERTYPE, CREATIONDATE\n      FROM ZI_SALES_ORDER_HEADER\n     WHERE CREATIONDATE BETWEEN '20260401' AND '20260430'\n     ORDER BY CREATIONDATE\n  row_number: 200\n```\n\nNotes on the SQL:\n\n- `row_number` caps at 1000. 200 is a sane default while exploring; raise it if you see exactly\n  200 rows returned (that's the tell-tale sign of truncation).\n- `BETWEEN \u2026 AND \u2026` is inclusive on both ends, which is what \"April 2026\" should mean.\n- String literals in SAP SQL use **single quotes**.\n- If you want just the distinct order types (to answer \"what order types do we have\"), a\n  follow-up call is cleaner:\n\n  ```text\n  Tool: preview_ddic_data\n  Arguments:\n    object_name: \"ZI_SALES_ORDER_HEADER\"\n    sql_query: |\n      SELECT DISTINCT SALESORDERTYPE\n        FROM ZI_SALES_ORDER_HEADER\n       WHERE CREATIONDATE BETWEEN '20260401' AND '20260430'\n       ORDER BY SALESORDERTYPE\n    row_number: 100\n  ```\n\nThe response is **columnar XML** (each column returned as its own dataset), not a list of row\ndicts \u2014 parse accordingly before presenting the result.\n\n---\n\n## Empty-result caveat (important \u2014 mention to the user)\n\nThe skill's \"Dev client vs test/prod client\" principle applies here directly:\n\n- The MCP is connected to **client 110**, which the project notes flag as the **dev client**.\n- Dev clients in most SAP landscapes carry little or no transactional master data (sales orders\n  are transactional). It is entirely plausible that `ZI_SALES_ORDER_HEADER` returns **zero rows\n  for April 2026** even though the view, the column names, and the SQL are all correct.\n\nHow to recognize and handle it:\n\n1. If step (b) returns an empty dataset, first sanity-check the view with an unfiltered probe:\n   ```text\n   Tool: preview_ddic_data\n   Arguments:\n     object_name: \"ZI_SALES_ORDER_HEADER\"\n     sql_query: \"SELECT COUNT(*) AS CNT FROM ZI_SALES_ORDER_HEADER\"\n     row_number: 1\n   ```\n   If `CNT = 0`, the view is empty on this client \u2014 it is not a query problem.\n\n2. If the view has rows but none in April 2026, widen the window to confirm\n   (`BETWEEN '20260101' AND '20261231'`, or drop the date filter entirely and `ORDER BY\n   CREATIONDATE DESC`) to see what date range actually has data.\n\n3. If the user confirms the data should exist on another client (e.g. 120 for QA / 210 for\n   integration), switch the session without restarting the container:\n\n   ```text\n   Tool: connect_to_sap\n   Arguments:\n     hostname: \"<same hostname as Docker env>\"\n     username: \"<same user>\"\n     password: \"<same password>\"\n     client:   \"120\"\n   ```\n\n   Then re-run the `preview_ddic_data` call. The skill notes this override applies for the\n   current session only.\n\n## Additional caveats worth flagging before executing\n\n- **Exact column names come from step 2.** Do not hardcode `CREATIONDATE` / `SALESORDERTYPE` \u2014\n  read them out of the `get_ddic_object_metadata` response. In S/4 standard, the underlying\n  field for sales-document type is `AUART` and creation date is `ERDAT`; CDS views usually\n  re-alias these to semantic names, but the aliasing differs between releases.\n- **Timestamp columns.** If the creation column is a timestamp (`DEC(15)` `TIMESTAMP` or\n  `UTCLONG`) rather than a `DATS` date, use\n  `WHERE CREATIONDATETIME >= '20260401000000' AND CREATIONDATETIME < '20260501000000'` with the\n  correct literal length (14 digits for `TIMESTAMP`, ISO form for `UTCLONG`).\n- **Authorizations.** `preview_ddic_data` runs under the MCP's technical user. If that user\n  lacks read authorization on the underlying tables the view joins, you will get an auth error,\n  not an empty result \u2014 the two failure modes look different.\n- **No lock / no transport.** Confirm you are NOT calling `lock_object` here; previewing data\n  is read-only and a lock would be both unnecessary and harmful (locks on DDLS require\n  stateful sessions and expire after ~30 min).\n"}], "grading": {"eval_id": 1, "eval_name": "preview-cds-view-data", "config": "with_skill", "expectations": [{"text": "Plan calls `search_object` to verify the CDS view exists", "passed": true, "evidence": "search_object call found"}, {"text": "Plan calls `get_ddic_object_metadata` with `object_type=\"cds\"` (lowercase cds, not ddic)", "passed": true, "evidence": "get_ddic_object_metadata with object_type=cds"}, {"text": "Plan calls `preview_ddic_data` with a concrete SELECT statement", "passed": true, "evidence": "preview_ddic_data + SELECT found"}, {"text": "SQL filters for April 2026 rows (date literal in YYYYMMDD form or similar)", "passed": true, "evidence": "April 2026 filter present in SQL"}, {"text": "Plan explicitly flags that dev client 110 may return empty data and explains the cause", "passed": true, "evidence": "dev client issue flagged"}, {"text": "Plan suggests switching client (via connect_to_sap or restarting container with a different SAP_CLIENT)", "passed": true, "evidence": "suggests switching client"}, {"text": "Plan does NOT include `lock_object` or `activate_object` (read-only task)", "passed": true, "evidence": "mentions lock_object ONLY to explicitly flag 'do NOT call lock here' \u2014 guardrail, not an actual call"}], "pass_count": 7, "total": 7}}, {"id": "eval-1-preview-cds-view-data-without_skill", "prompt": "I want to preview the data of the CDS view `ZI_SALES_ORDER_HEADER` to check what order types we have in April 2026. Show me the tool calls I should run against `sap-adt-mcp` to (a) confirm the view exists and see its columns, and (b) query only the rows from April 2026, ordered by creation date. If the results could plausibly come back empty on our connected SAP client (110 is the dev client), mention that and how to handle it.", "eval_id": 1, "outputs": [{"name": "plan.md", "type": "text", "content": "# Plan: Preview CDS view `ZI_SALES_ORDER_HEADER` data for April 2026\n\nTarget MCP server: `sap-adt-mcp` (exposes the SAP ADT REST API as MCP tools).\nConnected client: **110** (dev) \u2014 this matters for expectations about data volume.\n\nAuthentication is handled automatically via the `x-hostname` / `x-username` /\n`x-password` / `x-client` HTTP headers the host injects into every `call_tool`\nrequest, so an explicit `connect_to_sap` call is **not required**. The plan\nbelow therefore goes straight to the CDS-view investigation.\n\n---\n\n## Step (a) \u2014 Confirm the view exists and inspect its columns\n\n### a.1  Verify the object exists (search)\n\nUse `search_object` to make sure `ZI_SALES_ORDER_HEADER` is present in the\nsystem and see which package/type it lives in. This is cheap and avoids\nconfusing error messages later if the name is wrong.\n\n```json\n{\n  \"tool\": \"search_object\",\n  \"arguments\": {\n    \"query\": \"ZI_SALES_ORDER_HEADER\",\n    \"max_results\": 10\n  }\n}\n```\n\nExpected: a result of object type `DDLS/DF` (DDL Source) pointing at a CDS\nview. If you get zero hits, the name is wrong \u2014 try a wildcard such as\n`ZI_SALES_ORDER*` before going further.\n\n### a.2  Fetch the DDIC metadata (columns, data types, key fields)\n\nOnce the object is confirmed, use `get_ddic_object_metadata` \u2014 this is the\npurpose-built tool for CDS views and transparent tables in this server. It\nreturns the field list with DDIC types, which you need to pick the correct\ndate column and to know exactly what will come back from the preview.\n\n```json\n{\n  \"tool\": \"get_ddic_object_metadata\",\n  \"arguments\": {\n    \"object_name\": \"ZI_SALES_ORDER_HEADER\",\n    \"object_type\": \"CDS_VIEW\"\n  }\n}\n```\n\nFrom the returned field list, identify:\n\n- The **order type** column \u2014 typically `AUART` or an aliased name such as\n  `SalesOrderType` / `OrderType`.\n- The **creation date** column \u2014 typically `ERDAT`, or an aliased\n  `CreationDate` / `CreatedOn` (DATS type, format `YYYYMMDD`).\n- The **order ID** column \u2014 typically `VBELN` / `SalesOrder`.\n\nIf you want to double-check the view's DDL (e.g. to see the `define view`\nheader, associations, or annotations), you can also read the source:\n\n```json\n{\n  \"tool\": \"get_object_source\",\n  \"arguments\": {\n    \"object_name\": \"ZI_SALES_ORDER_HEADER\",\n    \"object_type\": \"DDLS/DF\",\n    \"version\": \"active\"\n  }\n}\n```\n\nThis is optional for just previewing data, but useful if the alias names\nfrom step a.2 are ambiguous.\n\n---\n\n## Step (b) \u2014 Query April 2026 rows, ordered by creation date\n\nUse `preview_ddic_data`, which runs a read-only SQL-like query against the\nview through SAP's data-preview endpoint.\n\nAssuming the two fields are `ERDAT` (creation date) and `AUART` (order\ntype) \u2014 **adjust these names to whatever step a.2 reported**:\n\n```json\n{\n  \"tool\": \"preview_ddic_data\",\n  \"arguments\": {\n    \"object_name\": \"ZI_SALES_ORDER_HEADER\",\n    \"object_type\": \"CDS_VIEW\",\n    \"max_rows\": 500,\n    \"where\": \"ERDAT BETWEEN '20260401' AND '20260430'\",\n    \"order_by\": \"ERDAT ASC\"\n  }\n}\n```\n\nNotes on the query:\n\n- SAP DATS columns compare as `YYYYMMDD` character literals \u2014 hence\n  `'20260401'` / `'20260430'`, not `'2026-04-01'`.\n- If the view exposes a CDS alias such as `CreationDate`, substitute it in\n  both `where` and `order_by` (e.g. `CreationDate BETWEEN '20260401' AND\n  '20260430'`).\n- `max_rows` of 500 is a safe cap for \"what order types do we have\"; bump it\n  if you need full coverage.\n- If the server's `preview_ddic_data` schema uses a single `sql` /\n  `query_string` parameter instead of `where` + `order_by`, pass the full\n  condition there:\n  `\"sql\": \"SELECT * FROM ZI_SALES_ORDER_HEADER WHERE ERDAT BETWEEN '20260401' AND '20260430' ORDER BY ERDAT\"`.\n\n### Optional: distinct order types only\n\nIf you only care about the set of order types (not each row), and the\nserver's `preview_ddic_data` supports `select` / projection, a tighter call\nis:\n\n```json\n{\n  \"tool\": \"preview_ddic_data\",\n  \"arguments\": {\n    \"object_name\": \"ZI_SALES_ORDER_HEADER\",\n    \"object_type\": \"CDS_VIEW\",\n    \"max_rows\": 500,\n    \"select\": \"AUART, ERDAT\",\n    \"where\": \"ERDAT BETWEEN '20260401' AND '20260430'\",\n    \"order_by\": \"ERDAT ASC\"\n  }\n}\n```\n\nThen deduplicate the `AUART` column on your side.\n\n---\n\n## Handling plausibly-empty results on client 110\n\nClient **110 is the dev client**, so an empty April-2026 result set is a\nreal possibility \u2014 dev systems are rarely loaded with realistic, current,\ndate-stamped transactional data. Treat an empty response as *expected\nuntil proven otherwise* and validate before concluding the view is broken:\n\n1. **Broaden the window.** Re-run `preview_ddic_data` without the date\n   filter and order by `ERDAT DESC`, `max_rows: 20`. This reveals the\n   newest `ERDAT` actually present in dev:\n\n   ```json\n   {\n     \"tool\": \"preview_ddic_data\",\n     \"arguments\": {\n       \"object_name\": \"ZI_SALES_ORDER_HEADER\",\n       \"object_type\": \"CDS_VIEW\",\n       \"max_rows\": 20,\n       \"order_by\": \"ERDAT DESC\"\n     }\n   }\n   ```\n\n   If the newest `ERDAT` is, say, `20240917`, April 2026 will obviously be\n   empty and you should report that to the user rather than retry.\n\n2. **Confirm any rows at all.** Run the same call with `max_rows: 1` and no\n   filter. If even that returns zero rows, the view itself is empty in\n   client 110 (common for Z views wrapping tables that are only populated\n   on QA/PRD).\n\n3. **Check whether the data lives in a different client.** Some CDS views\n   include a client field and SAP automatically restricts to the logon\n   client. Ask the user whether QA (e.g. client 210) or PRD should be used\n   instead, and, if so, re-run with the appropriate `x-client` header on\n   the MCP call.\n\n4. **Sanity-check the filter.** If other April-2026 rows exist in the\n   underlying table but not via the view, re-read the view source\n   (`get_object_source` from a.2) to see if it filters by status,\n   organization, etc., that would exclude the data.\n\nReport back to the user with:\n- whether the view exists and its key columns,\n- what the newest `ERDAT` in client 110 actually is,\n- the distinct order types found in April 2026 (or an explicit \"none in\n  dev \u2014 newest record is `<date>`; recommend re-running against client\n  `<n>`\").\n"}], "grading": {"eval_id": 1, "eval_name": "preview-cds-view-data", "config": "without_skill", "expectations": [{"text": "Plan calls `search_object` to verify the CDS view exists", "passed": true, "evidence": "search_object call found"}, {"text": "Plan calls `get_ddic_object_metadata` with `object_type=\"cds\"` (lowercase cds, not ddic)", "passed": false, "evidence": "ddic metadata with object_type=cds not found"}, {"text": "Plan calls `preview_ddic_data` with a concrete SELECT statement", "passed": true, "evidence": "preview_ddic_data + SELECT found"}, {"text": "SQL filters for April 2026 rows (date literal in YYYYMMDD form or similar)", "passed": true, "evidence": "April 2026 filter present in SQL"}, {"text": "Plan explicitly flags that dev client 110 may return empty data and explains the cause", "passed": true, "evidence": "dev client issue flagged"}, {"text": "Plan suggests switching client (via connect_to_sap or restarting container with a different SAP_CLIENT)", "passed": true, "evidence": "suggests switching client"}, {"text": "Plan does NOT include `lock_object` or `activate_object` (read-only task)", "passed": true, "evidence": "correctly skipped lock/activate (read-only)"}], "pass_count": 6, "total": 7}}, {"id": "eval-2-create-new-cds-view-with-transport-with_skill", "prompt": "I need to create a brand new CDS view called `ZI_CUSTOMER_ACTIVE` in the package `ZSD_API`. It should project `ZI_CUSTOMER` filtered on `active = abap_true`. Since the package is transportable, I also need a new transport request for this work titled 'Active customer CDS view'. Walk me through every `sap-adt-mcp` tool call to do this end-to-end, including creating the TR, creating the object skeleton, populating the source, and activating. Be explicit about which TR number goes into which parameter (parent TRKORR vs child task).", "eval_id": 2, "outputs": [{"name": "plan.md", "type": "text", "content": "# Plan \u2014 Create CDS view `ZI_CUSTOMER_ACTIVE` in package `ZSD_API`\n\nGoal: create a brand-new CDS view projecting `ZI_CUSTOMER` filtered on `active = abap_true`, inside the transportable package `ZSD_API`, under a fresh transport request titled \"Active customer CDS view\".\n\n## High-level sequence\n\n1. Create a standalone transport request (TR) to carry this work.\n2. Create the CDS view skeleton in `ZSD_API`, attaching it to the TR.\n3. Lock the new object to start editing.\n4. Replace the skeleton source with the actual DDL.\n5. Run a syntax check while still holding the lock.\n6. Unlock the object.\n7. Activate the object.\n\n## TR number terminology (memorize this)\n\n`create_transport_organizer` returns two correlated IDs:\n\n| Field          | Represents                    | Used for                                                      |\n| -------------- | ----------------------------- | ------------------------------------------------------------- |\n| `TRKORR`       | Parent transport (container)  | `create_object.corr_nr`, `change_package.transport_number`    |\n| `TASK_NUMBER`  | Child task (your dev task)    | Auto-routed by SAP on lock; usually returned as `CORRNR`      |\n\nRule: pass `TRKORR` to `create_object`; let SAP route the lock to `TASK_NUMBER`; pass whatever `lock_object` returns as `CORRNR` into `set_object_source.corr_nr`.\n\nFor this plan I'll use placeholders:\n\n- `<TRKORR>` = parent TR, e.g. `D2AK905110`\n- `<TASK_NUMBER>` = child task, e.g. `D2AK905111` (objects land here)\n\n---\n\n## Step 1 \u2014 Create the transport request\n\n```text\ncreate_transport_organizer(\n    description=\"Active customer CDS view\",\n    tr_type=\"K\"              # K = Workbench (default, shown explicitly)\n    # target=<leave out unless the user specified a landscape target>\n)\n```\n\nReturned shape (example):\n\n```json\n{\n  \"TRKORR\": \"<TRKORR>\",\n  \"TASK_NUMBER\": \"<TASK_NUMBER>\",\n  \"TASK_OWNER\": \"MGARCIA\",\n  \"TARGET\": \"...\",\n  \"DESCRIPTION\": \"Active customer CDS view\",\n  \"URI\": \"...\",\n  \"TASK_URI\": \"...\"\n}\n```\n\nCapture `<TRKORR>` \u2014 that is the ONLY value you feed to `create_object.corr_nr` below. Do NOT use `<TASK_NUMBER>` there.\n\nOptional sanity check first:\n\n```text\nlist_transports(transport_number=\"D2AK*\")\n```\n\nto confirm no existing modifiable TR is already intended for this work. Skip if the user was clear they want a fresh one (they were).\n\n---\n\n## Step 2 \u2014 Create the CDS view skeleton\n\nCDS view `object_type` = `DDLS/DF` (see object-types reference).\n\n```text\ncreate_object(\n    object_type=\"DDLS/DF\",\n    name=\"ZI_CUSTOMER_ACTIVE\",\n    package=\"ZSD_API\",\n    description=\"Active customers projection over ZI_CUSTOMER\",\n    corr_nr=\"<TRKORR>\"          # parent TR from Step 1\n)\n```\n\nThis creates an empty DDL source that belongs to `ZSD_API` and is attached to the child task under `<TRKORR>`.\n\n---\n\n## Step 3 \u2014 Locate the new object's URI\n\n```text\nsearch_object(\n    query=\"ZI_CUSTOMER_ACTIVE\",\n    object_type=\"DDLS/DF\",\n    max_results=10\n)\n```\n\nFrom the first result, capture:\n\n- `uri`  \u2192  `/sap/bc/adt/ddic/ddl/sources/zi_customer_active` (lowercase \u2014 this is what you pass to lock/source tools)\n- `name` \u2192  `ZI_CUSTOMER_ACTIVE` (uppercase \u2014 this is what you pass to `activate_object`)\n\nBind them:\n\n- `<URI>` = `/sap/bc/adt/ddic/ddl/sources/zi_customer_active`\n- `<NAME>` = `ZI_CUSTOMER_ACTIVE`\n\n---\n\n## Step 4 \u2014 Lock the object\n\n```text\nlock_object(object_uri=\"<URI>\")\n```\n\nReturned shape (example):\n\n```json\n{\n  \"LOCK_HANDLE\": \"abcd1234...\",\n  \"CORRNR\": \"<TASK_NUMBER>\",\n  \"CORRUSER\": \"MGARCIA\",\n  \"CORRTEXT\": \"Active customer CDS view\",\n  \"IS_LOCAL\": false,\n  \"SAP_CONTEXT_ID\": \"...\"\n}\n```\n\nCapture `<LOCK_HANDLE>` and `<CORRNR>`. Note that `CORRNR` here is typically `<TASK_NUMBER>` (SAP auto-routes to the current user's child task). That's correct and expected \u2014 pass whatever this call returns straight into `set_object_source`.\n\nIf `CORRNR` comes back empty (shouldn't happen since we just attached to `<TRKORR>`, but defensive check): unlock, call `create_transport_and_assign(devclass=\"ZSD_API\", request_text=\"Active customer CDS view\", ref=\"<URI>\")`, then re-lock.\n\n---\n\n## Step 5 \u2014 Write the CDS source\n\nBuild the DDL. Typical projection pattern over an interface view:\n\n```abap\n@AbapCatalog.sqlViewName: 'ZICUSTACT'\n@AbapCatalog.compiler.compareFilter: true\n@AbapCatalog.preserveKey: true\n@AccessControl.authorizationCheck: #NOT_REQUIRED\n@EndUserText.label: 'Active customers projection'\ndefine view ZI_CUSTOMER_ACTIVE\n  as select from ZI_CUSTOMER\n{\n  key customer_id,\n      customer_name,\n      active\n      // add the remaining fields you want to project from ZI_CUSTOMER here\n}\nwhere active = abap_true\n```\n\nNotes:\n- The `@AbapCatalog.sqlViewName` must be unique, \u226416 chars, uppercase \u2014 `ZICUSTACT` is a reasonable default. Confirm with the user if their team uses a different naming convention.\n- If the user wants to project **every** field of `ZI_CUSTOMER`, you can replace the explicit field list with an `*`-style projection by using the RAP projection syntax `define view entity ... as projection on ZI_CUSTOMER`. The classic `define view ... as select from ...` form (above) requires listing fields. Confirm which style the team uses; the above is the safer, widest-compatibility choice.\n- The user specified the filter `active = abap_true`. `abap_true` is a built-in DDL literal for `'X'`.\n\nSave it:\n\n```text\nset_object_source(\n    object_uri=\"<URI>\",\n    source_code=<the full DDL block above>,\n    lock_handle=\"<LOCK_HANDLE>\",\n    corr_nr=\"<CORRNR>\"         # whatever lock_object returned \u2014 typically <TASK_NUMBER>\n)\n```\n\nFull replace \u2014 `source_code` must be the entire file, not a patch.\n\n---\n\n## Step 6 \u2014 Syntax check (still holding the lock)\n\n```text\nsyntax_check(\n    object_uri=\"<URI>\",\n    source_code=<same DDL block>,\n    version=\"inactive\"\n)\n```\n\n- If returns `\"Syntax check passed\"` \u2192 proceed to unlock.\n- If returns errors \u2192 edit the source, call `set_object_source` again (same lock), re-check. Do NOT unlock first \u2014 you'd have to re-acquire the lock.\n\n---\n\n## Step 7 \u2014 Unlock\n\n```text\nunlock_object(\n    object_uri=\"<URI>\",\n    lock_handle=\"<LOCK_HANDLE>\"\n)\n```\n\nMust happen before activation.\n\n---\n\n## Step 8 \u2014 Activate\n\n```text\nactivate_object(\n    object_name=\"ZI_CUSTOMER_ACTIVE\",     # uppercase <NAME>\n    object_uri=\"<URI>\"                    # lowercase path\n)\n```\n\nOn success the view is compiled and immediately queryable (e.g. via `preview_ddic_data`).\n\n---\n\n## Final report to the user (template)\n\n> Created `ZI_CUSTOMER_ACTIVE` in package `ZSD_API`, projecting `ZI_CUSTOMER` filtered on `active = abap_true`. Transport `<TRKORR>` (\"Active customer CDS view\") \u2014 your task within it is `<TASK_NUMBER>`. Activated successfully.\n\n---\n\n## Parameter cheat-sheet (which TR goes where)\n\n| Tool call                       | Param            | Value              | Why                                                                 |\n| ------------------------------- | ---------------- | ------------------ | ------------------------------------------------------------------- |\n| `create_transport_organizer`    | \u2014                | \u2014                  | Returns `<TRKORR>` and `<TASK_NUMBER>`                              |\n| `create_object`                 | `corr_nr`        | `<TRKORR>`         | Always the parent TR. SAP routes to your current child task.        |\n| `lock_object`                   | \u2014                | \u2014                  | Returns `CORRNR` (usually `<TASK_NUMBER>`) \u2014 trust and pass through |\n| `set_object_source`             | `corr_nr`        | value from lock    | Whatever `lock_object` returned                                     |\n| `change_package` (not used here)| `transport_number` | `<TRKORR>`       | If you ever move the object later \u2014 parent TR, not task             |\n\n## Error-recovery quick table\n\n| Symptom                                              | Fix                                                                              |\n| ---------------------------------------------------- | -------------------------------------------------------------------------------- |\n| `set_object_source` \u2192 \"no transport available\"        | `unlock_object` \u2192 `create_transport_and_assign(devclass=\"ZSD_API\", ...)` \u2192 re-lock |\n| `syntax_check` fails                                  | Stay locked, edit, re-save, re-check. Do not unlock.                             |\n| Lock held by another user                             | Stop. Tell the user the owner and do not force-unlock.                           |\n| `activate_object` fails with \"object still locked\"    | Call `unlock_object` and retry activation.                                       |\n"}], "grading": {"eval_id": 2, "eval_name": "create-new-cds-view-with-transport", "config": "with_skill", "expectations": [{"text": "Plan calls `create_transport_organizer` (or equivalent) BEFORE `create_object`", "passed": true, "evidence": "create_transport_organizer before create_object"}, {"text": "Plan captures BOTH parent TRKORR and child TASK_NUMBER from create_transport_organizer output", "passed": true, "evidence": "TRKORR + TASK_NUMBER both shown"}, {"text": "Plan explicitly explains which transport number goes into which parameter (parent TRKORR vs child task)", "passed": true, "evidence": "parent vs task distinction explained"}, {"text": "`create_object` call uses `object_type=\"DDLS/DF\"`", "passed": true, "evidence": "object_type=DDLS/DF"}, {"text": "`create_object.corr_nr` is set to the TRKORR (passes a non-empty value aligned with what create_transport_organizer returned)", "passed": true, "evidence": "create_object.corr_nr present"}, {"text": "Plan follows lock \u2192 set_source \u2192 unlock \u2192 activate after the create", "passed": true, "evidence": "full lock-set-unlock-activate loop present"}, {"text": "Plan includes concrete CDS DDL source with a WHERE clause filtering on active", "passed": true, "evidence": "DDL with active filter"}, {"text": "Plan ends with `activate_object`", "passed": true, "evidence": "main pipeline ends with activate_object; later mentions of unlock are in an error-recovery cheat-sheet table"}], "pass_count": 8, "total": 8}}, {"id": "eval-2-create-new-cds-view-with-transport-without_skill", "prompt": "I need to create a brand new CDS view called `ZI_CUSTOMER_ACTIVE` in the package `ZSD_API`. It should project `ZI_CUSTOMER` filtered on `active = abap_true`. Since the package is transportable, I also need a new transport request for this work titled 'Active customer CDS view'. Walk me through every `sap-adt-mcp` tool call to do this end-to-end, including creating the TR, creating the object skeleton, populating the source, and activating. Be explicit about which TR number goes into which parameter (parent TRKORR vs child task).", "eval_id": 2, "outputs": [{"name": "plan.md", "type": "text", "content": "# Plan: Create `ZI_CUSTOMER_ACTIVE` CDS view in package `ZSD_API` with a new transport\n\nThis plan walks through every `sap-adt-mcp` tool call needed to create a brand-new DDLS (Data Definition Language Source, a.k.a. CDS view) named `ZI_CUSTOMER_ACTIVE` that projects `ZI_CUSTOMER` filtered on `active = abap_true`, in the transportable package `ZSD_API`, under a newly-created transport request titled **\"Active customer CDS view\"**.\n\nAll tool calls assume SAP credentials are either supplied via HTTP headers (`x-hostname`, `x-username`, `x-password`, `x-client`) or have already been established via `connect_to_sap`. The calls are listed in strict execution order; several steps depend on identifiers returned by earlier steps.\n\n---\n\n## Conceptual overview\n\nIn SAP, a workbench transport has two layers:\n\n- **Parent request (TRKORR of type `K` \u2014 Workbench Request)** \u2014 the container you see in SE09/SE10 at the top level.\n- **Child task (TRKORR of type `S` \u2014 Development/Correction task)** \u2014 one per developer, nested under the parent.\n\nWhen you \"assign an object to a transport,\" SAP actually assigns the object to your **task** (child), not the parent. The ADT APIs reflect this:\n\n- `create_transport_organizer` returns the **parent TRKORR** (e.g. `DEVK900123`) and typically also auto-creates a task owned by the calling user (e.g. `DEVK900124`). Some ADT implementations return both; others only return the parent and expect the caller to look up the task.\n- `create_transport_and_assign` (object-bound flow) is the more reliable path: you give it the object URI and a title, and SAP returns both the parent request and the task, and the object is already linked to the task.\n\nBecause we have to create the DDLS object first (so a URI exists) before ADT will happily create an object-bound transport, we have two viable orderings:\n\n1. **Pre-create a standalone TR, then create the object into it.** Uses `create_transport_organizer` first. Requires us to know the **task** number (child), not the parent, when we call `create_object` and `set_object_source`.\n2. **Create the object first against `$TMP`-style lock-first flow, then bind a TR via `create_transport_and_assign`.** Simpler, but wastes a round-trip because `ZSD_API` is transportable \u2014 SAP will refuse to save source without a TR.\n\nOption 1 is cleaner for a transportable package, so that is what we will do below.\n\n**Key rule for parameter naming:** whenever a tool parameter is called `transport_request`, `transport`, or `corrnr`, it expects the **task TRKORR (child)**, not the parent. If the tool explicitly says `parent_request` / `parent_trkorr`, it wants the parent. I flag this explicitly at every step.\n\n---\n\n## Step 0 \u2014 (Optional) Establish the SAP connection\n\nIf credentials are already being injected via headers by the `SAPMiddleware`, skip this. Otherwise:\n\n```json\nTool: connect_to_sap\nArguments:\n{\n  \"hostname\": \"https://sap.example.com:44300\",\n  \"username\": \"MGARCIA\",\n  \"password\": \"<redacted>\",\n  \"client\": \"110\"\n}\n```\n\nExpected result: `{\"status\": \"connected\", \"user\": \"MGARCIA\", \"client\": \"110\"}`.\n\n---\n\n## Step 1 \u2014 Sanity-check that `ZI_CUSTOMER` exists and that `ZSD_API` is the correct package\n\nThese two calls are cheap and prevent wasted work downstream.\n\n### 1a. Confirm `ZI_CUSTOMER` exists\n\n```json\nTool: search_object\nArguments:\n{\n  \"query\": \"ZI_CUSTOMER\",\n  \"object_type\": \"DDLS\",\n  \"max_results\": 5\n}\n```\n\nExpect one hit with `name = \"ZI_CUSTOMER\"`, `type = \"DDLS/DF\"`, and a URI like `/sap/bc/adt/ddic/ddl/sources/zi_customer`.\n\n### 1b. Confirm the target name `ZI_CUSTOMER_ACTIVE` does *not* already exist\n\n```json\nTool: search_object\nArguments:\n{\n  \"query\": \"ZI_CUSTOMER_ACTIVE\",\n  \"object_type\": \"DDLS\",\n  \"max_results\": 5\n}\n```\n\nExpect zero hits. If a hit is returned, stop and confirm with the user before overwriting.\n\n### 1c. (Optional) Verify `ZSD_API` is browsable and transportable\n\n```json\nTool: get_package_objects\nArguments:\n{\n  \"package_name\": \"ZSD_API\"\n}\n```\n\nThis confirms the package exists. A transportable package will have a non-`$TMP` software component; any later `set_object_source` without a TR will be rejected, which is exactly why we need Step 2.\n\n---\n\n## Step 2 \u2014 Create the transport request \"Active customer CDS view\"\n\nWe use the standalone organizer API here because the object doesn't exist yet.\n\n```json\nTool: create_transport_organizer\nArguments:\n{\n  \"description\": \"Active customer CDS view\",\n  \"type\": \"K\",\n  \"target_system\": \"\",\n  \"owner\": \"MGARCIA\"\n}\n```\n\nNotes on parameters:\n- `description` \u2014 free-text title shown in SE09/SE10. Must match what the user asked for.\n- `type` \u2014 `\"K\"` = **Workbench Request** (the right type for ABAP/CDS source). `\"W\"` would be a Customizing Request (wrong for DDLS).\n- `target_system` \u2014 leave empty to use the package's default transport route; set it only if your landscape requires an explicit consolidation target.\n- `owner` \u2014 defaults to the calling user; supplying it explicitly keeps the task owned by `MGARCIA`.\n\n**Expected response (example values \u2014 substitute real ones in later steps):**\n\n```json\n{\n  \"parent_trkorr\": \"DEVK900123\",\n  \"task_trkorr\":   \"DEVK900124\",\n  \"description\":   \"Active customer CDS view\",\n  \"owner\":         \"MGARCIA\",\n  \"status\":        \"D\"\n}\n```\n\nFrom here on:\n- **Parent TRKORR** = `DEVK900123` \u2014 used only if a tool explicitly asks for `parent_request` / `parent_trkorr` / when you want to reference the whole request (e.g. later `get_transport_objects` or release). **Not** what you pass to `create_object`/`set_object_source`.\n- **Task TRKORR** = `DEVK900124` \u2014 **this is the value that goes into every tool parameter named `transport_request` / `corrnr` from now on.**\n\nIf `create_transport_organizer` returns only `parent_trkorr`, immediately run:\n\n```json\nTool: list_transports\nArguments:\n{\n  \"user\": \"MGARCIA\",\n  \"status\": \"modifiable\",\n  \"parent_trkorr\": \"DEVK900123\"\n}\n```\n\n\u2026and pick the child task whose owner matches `MGARCIA`. That task number is what you use as `transport_request` everywhere else.\n\n---\n\n## Step 3 \u2014 (Optional but recommended) Confirm the transport is acceptable for `ZSD_API`\n\n```json\nTool: transport_check\nArguments:\n{\n  \"object_name\": \"ZI_CUSTOMER_ACTIVE\",\n  \"object_type\": \"DDLS/DF\",\n  \"package_name\": \"ZSD_API\",\n  \"operation\": \"CREATE\"\n}\n```\n\nExpect the response to list `DEVK900124` (our task) as an eligible request. If ADT insists the object must exist first, skip this call \u2014 it's informational only.\n\n---\n\n## Step 4 \u2014 Create the DDLS object skeleton\n\nThis creates the object header in `ZSD_API` bound to our task. The source body will still be empty / a placeholder \u2014 we set the real SELECT in Step 6.\n\n```json\nTool: create_object\nArguments:\n{\n  \"object_type\": \"DDLS/DF\",\n  \"object_name\": \"ZI_CUSTOMER_ACTIVE\",\n  \"package_name\": \"ZSD_API\",\n  \"description\": \"Active customers (projection of ZI_CUSTOMER)\",\n  \"transport_request\": \"DEVK900124\"\n}\n```\n\nKey points:\n- `object_type` \u2014 `DDLS/DF` is the ADT type code for a Data Definition (CDS view / DDL source). Some servers accept the shorthand `\"DDLS\"`; `DDLS/DF` is the safe, explicit form.\n- `transport_request` \u2014 **must be the task `DEVK900124`, not the parent `DEVK900123`.** If you pass the parent here, SAP will respond with `TR 'DEVK900123' is not a task of the current user` or similar.\n- `description` \u2014 appears as the CDS short text in SE80 / ADT.\n\nExpected result: `{\"status\": \"created\", \"uri\": \"/sap/bc/adt/ddic/ddl/sources/zi_customer_active\"}`.\n\n---\n\n## Step 5 \u2014 Lock the object so we can write its source\n\nBecause `set_object_source` is a state-changing operation, SAP requires an exclusive lock, and the MCP server must switch to a stateful session to hold it.\n\n```json\nTool: lock_object\nArguments:\n{\n  \"object_name\": \"ZI_CUSTOMER_ACTIVE\",\n  \"object_type\": \"DDLS/DF\"\n}\n```\n\nExpected response contains a `lock_handle` (opaque string) that the MCP server remembers server-side for the subsequent `set_object_source` call \u2014 you do not normally pass it back yourself.\n\nIf this fails with `object is locked by another user`, stop \u2014 somebody else is editing it.\n\n---\n\n## Step 6 \u2014 Write the CDS source\n\nThis is the core deliverable. We project `ZI_CUSTOMER` and filter on `active = abap_true`. The exact set of exposed fields depends on `ZI_CUSTOMER`'s signature; below is a conservative \"select all projected fields via `*`\" form that works if `ZI_CUSTOMER` already exposes a curated field list. If `ZI_CUSTOMER` is a raw basic view with 40+ fields and you want only the customer-facing ones, replace the `*` with an explicit list.\n\n```json\nTool: set_object_source\nArguments:\n{\n  \"object_name\": \"ZI_CUSTOMER_ACTIVE\",\n  \"object_type\": \"DDLS/DF\",\n  \"transport_request\": \"DEVK900124\",\n  \"source\": \"@AbapCatalog.sqlViewName: 'ZICUSTACT'\\n@AbapCatalog.compiler.compareFilter: true\\n@AbapCatalog.preserveKey: true\\n@AccessControl.authorizationCheck: #NOT_REQUIRED\\n@EndUserText.label: 'Active customers (projection of ZI_CUSTOMER)'\\n\\ndefine view ZI_CUSTOMER_ACTIVE\\n  as select from ZI_CUSTOMER\\n{\\n  key customer_id,\\n      customer_name,\\n      active\\n}\\nwhere active = abap_true\"\n}\n```\n\nParameter notes:\n- `transport_request` \u2014 again the **task** `DEVK900124`. Passing the parent here causes the save to be rejected.\n- `source` \u2014 I've kept the body conservative and ASCII-only. If `ZI_CUSTOMER` is already a projection view (`@AccessControl.authorizationCheck` + `define view entity`), prefer the newer view-entity syntax instead:\n\n  ```abap\n  @EndUserText.label: 'Active customers (projection of ZI_CUSTOMER)'\n  @AccessControl.authorizationCheck: #NOT_REQUIRED\n  define view entity ZI_CUSTOMER_ACTIVE\n    as select from ZI_CUSTOMER\n  {\n    key customer_id,\n        customer_name,\n        active\n  }\n  where active = abap_true\n  ```\n\n  Pick the syntax that matches `ZI_CUSTOMER`'s own style \u2014 mixing classic and entity views on top of each other is legal but inconsistent. You can peek at `ZI_CUSTOMER`'s style first via `get_object_source` if you aren't sure.\n\nExpected result: `{\"status\": \"saved\"}`.\n\n---\n\n## Step 7 \u2014 Syntax-check before activating\n\nCheaper than a failed activation and gives better error messages.\n\n```json\nTool: syntax_check\nArguments:\n{\n  \"object_name\": \"ZI_CUSTOMER_ACTIVE\",\n  \"object_type\": \"DDLS/DF\"\n}\n```\n\nExpect `{\"messages\": []}` or equivalent \"no errors.\" If there are errors (e.g. `active` isn't a field of `ZI_CUSTOMER`, or the field is typed differently), fix the `source` in Step 6 and re-run.\n\n---\n\n## Step 8 \u2014 Unlock the object\n\nBefore activating, release the edit lock. Activation does not require the lock, and leaving the session stateful is wasteful.\n\n```json\nTool: unlock_object\nArguments:\n{\n  \"object_name\": \"ZI_CUSTOMER_ACTIVE\",\n  \"object_type\": \"DDLS/DF\"\n}\n```\n\nExpected result: `{\"status\": \"unlocked\"}`.\n\n(Some MCP implementations auto-release the lock at session end; calling unlock explicitly is still the safe, deterministic choice.)\n\n---\n\n## Step 9 \u2014 Activate the CDS view\n\n```json\nTool: activate_object\nArguments:\n{\n  \"object_name\": \"ZI_CUSTOMER_ACTIVE\",\n  \"object_type\": \"DDLS/DF\"\n}\n```\n\nExpected result: `{\"status\": \"active\", \"messages\": []}`.\n\nIf activation fails with e.g. `Field \"ACTIVE\" unknown`, return to Step 5\u20137 (re-lock, fix source, syntax check, unlock, re-activate).\n\n---\n\n## Step 10 \u2014 Verify the object landed in the correct transport task\n\nSanity check; purely read-only.\n\n```json\nTool: get_transport_objects\nArguments:\n{\n  \"trkorr\": \"DEVK900124\"\n}\n```\n\nExpect the response to contain an entry like:\n\n```json\n{ \"pgmid\": \"R3TR\", \"object\": \"DDLS\", \"obj_name\": \"ZI_CUSTOMER_ACTIVE\" }\n```\n\nOptionally, also list the parent to confirm the task hangs off it:\n\n```json\nTool: list_transports\nArguments:\n{\n  \"user\": \"MGARCIA\",\n  \"status\": \"modifiable\"\n}\n```\n\nYou should see `DEVK900123` (parent, description \"Active customer CDS view\") with `DEVK900124` as its task, and `ZI_CUSTOMER_ACTIVE` under the task.\n\n---\n\n## TRKORR cheat-sheet\n\n| Value (example) | Type | Where it goes |\n|-----------------|------|---------------|\n| `DEVK900123` | Parent Workbench Request (K) | Nowhere on create/write tools. Only appears as the **return value** of `create_transport_organizer` and as a filter/identifier on `list_transports` / release flows. |\n| `DEVK900124` | Developer Task (S) under `DEVK900123` | `transport_request` parameter of `create_object`, `set_object_source`, `delete_object`, `change_package`, and the `trkorr` argument of `get_transport_objects` when you want to inspect *your* task specifically. |\n\n**Rule of thumb:** if a tool modifies an object, it wants the **task**. If a tool manages the request itself (release, list, inspect), it wants the **parent**.\n\n---\n\n## End-to-end summary (copy-paste order)\n\n1. `connect_to_sap` (optional if headers are used)\n2. `search_object` \u2014 confirm `ZI_CUSTOMER` exists\n3. `search_object` \u2014 confirm `ZI_CUSTOMER_ACTIVE` does **not** exist\n4. `get_package_objects` \u2014 confirm `ZSD_API` (optional)\n5. `create_transport_organizer` \u2014 title `\"Active customer CDS view\"`, type `K` \u2192 returns parent `DEVK900123` + task `DEVK900124`\n6. `transport_check` (optional)\n7. `create_object` \u2014 `DDLS/DF`, `ZI_CUSTOMER_ACTIVE`, package `ZSD_API`, `transport_request = DEVK900124` **(task)**\n8. `lock_object` \u2014 `ZI_CUSTOMER_ACTIVE`\n9. `set_object_source` \u2014 full CDS body, `transport_request = DEVK900124` **(task)**\n10. `syntax_check`\n11. `unlock_object`\n12. `activate_object`\n13. `get_transport_objects` with `trkorr = DEVK900124` \u2014 verify\n\nThat's the full end-to-end path. The only two places a TRKORR is actually written into a parameter are steps 7 and 9 (plus the optional verifications in 6 and 13), and in both cases it is the **task** `DEVK900124`, never the parent `DEVK900123`.\n"}], "grading": {"eval_id": 2, "eval_name": "create-new-cds-view-with-transport", "config": "without_skill", "expectations": [{"text": "Plan calls `create_transport_organizer` (or equivalent) BEFORE `create_object`", "passed": true, "evidence": "create_transport_organizer before create_object"}, {"text": "Plan captures BOTH parent TRKORR and child TASK_NUMBER from create_transport_organizer output", "passed": true, "evidence": "TRKORR + TASK_NUMBER both shown"}, {"text": "Plan explicitly explains which transport number goes into which parameter (parent TRKORR vs child task)", "passed": true, "evidence": "parent vs task distinction explained"}, {"text": "`create_object` call uses `object_type=\"DDLS/DF\"`", "passed": false, "evidence": "DDLS/DF object_type missing"}, {"text": "`create_object.corr_nr` is set to the TRKORR (passes a non-empty value aligned with what create_transport_organizer returned)", "passed": false, "evidence": "create_object missing corr_nr"}, {"text": "Plan follows lock \u2192 set_source \u2192 unlock \u2192 activate after the create", "passed": true, "evidence": "full lock-set-unlock-activate loop present"}, {"text": "Plan includes concrete CDS DDL source with a WHERE clause filtering on active", "passed": true, "evidence": "DDL with active filter"}, {"text": "Plan ends with `activate_object`", "passed": true, "evidence": "plan ends with activate_object"}], "pass_count": 6, "total": 8}}, {"id": "eval-3-expose-cds-as-odata-v4-with_skill", "prompt": "We already have the active CDS view `ZI_CUSTOMER_ACTIVE` in package `ZSD_API`. I want to expose it as an OData v4 service so a Fiori app can consume it. Outline the full sequence of `sap-adt-mcp` tool calls to (1) create and activate a service definition `ZSD_CUSTOMER_ACTIVE` that exposes the view as the entity `Customers`, (2) create and publish a service binding `ZSB_CUSTOMER_ACTIVE` with OData v4, and (3) verify the service works by fetching metadata and querying the first 5 rows. Keep everything in the existing TR `D2AK904120`.", "eval_id": 3, "outputs": [{"name": "plan.md", "type": "text", "content": "# Plan: Expose `ZI_CUSTOMER_ACTIVE` as OData v4 service\n\nGoal: publish the existing active CDS view `ZI_CUSTOMER_ACTIVE` (package `ZSD_API`) as an\nOData v4 service consumable from Fiori, using transport `D2AK904120`. End state:\n\n- Service definition `ZSD_CUSTOMER_ACTIVE` (SRVD/SRV) exposing the view as entity `Customers`.\n- Service binding `ZSB_CUSTOMER_ACTIVE` (SRVB/SVB) published on OData v4.\n- Metadata and first 5 rows fetched as a smoke test.\n\nThe sequence follows `SKILL.md` \"edit-and-activate loop\" plus workflow #6\n(\"Expose a CDS view as an OData v4 service\").\n\n---\n\n## Preflight (optional but cheap)\n\nSanity-check the TR is modifiable and still owned by the current user.\n\n```text\nlist_transports(\n    transport_number=\"D2AK904120\",\n    targets=True,\n)\n# Expect STATUS == \"D\" (modifiable). If \"R\" (released), stop and ask the user for a new TR.\n```\n\nConfirm the CDS view actually exists and is active (skip if you trust the user):\n\n```text\nsearch_object(\n    query=\"ZI_CUSTOMER_ACTIVE\",\n    object_type=\"DDLS/DF\",\n    max_results=1,\n)\n```\n\n---\n\n## Step 1 - Create and activate the service definition `ZSD_CUSTOMER_ACTIVE`\n\n### 1a. Create the skeleton (SRVD/SRV)\n\n```text\ncreate_object(\n    object_type=\"SRVD/SRV\",\n    name=\"ZSD_CUSTOMER_ACTIVE\",\n    package=\"ZSD_API\",\n    description=\"Service definition exposing ZI_CUSTOMER_ACTIVE as Customers\",\n    corr_nr=\"D2AK904120\",\n)\n```\n\n### 1b. Find the URI of the newly created object\n\n```text\nsearch_object(\n    query=\"ZSD_CUSTOMER_ACTIVE\",\n    object_type=\"SRVD/SRV\",\n    max_results=1,\n)\n# Capture: uri  -> e.g. /sap/bc/adt/ddic/srvd/sources/zsd_customer_active\n#          name -> ZSD_CUSTOMER_ACTIVE\n```\n\nLet `SRVD_URI` = that URI.\n\n### 1c. Lock the service definition\n\n```text\nlock_object(object_uri=SRVD_URI)\n# Capture: LOCK_HANDLE_SRVD, CORRNR (should be D2AK904120's active task; if empty, stop\n# and fall back to create_transport_and_assign against SRVD_URI, then re-lock).\n```\n\n### 1d. Write the service definition source\n\nThe DDL body for a v4 projection service. Entity alias `Customers` per the user's request.\n\n```text\nset_object_source(\n    object_uri=SRVD_URI,\n    source_code=\"\"\"@EndUserText.label: 'Expose ZI_CUSTOMER_ACTIVE as Customers'\ndefine service ZSD_CUSTOMER_ACTIVE {\n  expose ZI_CUSTOMER_ACTIVE as Customers;\n}\n\"\"\",\n    lock_handle=LOCK_HANDLE_SRVD,\n    corr_nr=\"D2AK904120\",\n)\n```\n\n### 1e. Syntax check before releasing the lock\n\n```text\nsyntax_check(\n    object_uri=SRVD_URI,\n    source_code=\"\"\"@EndUserText.label: 'Expose ZI_CUSTOMER_ACTIVE as Customers'\ndefine service ZSD_CUSTOMER_ACTIVE {\n  expose ZI_CUSTOMER_ACTIVE as Customers;\n}\n\"\"\",\n)\n# Expected: \"Syntax check passed\". If errors, fix source and re-call set_object_source\n# WHILE STILL HOLDING THE LOCK, then re-run syntax_check.\n```\n\n### 1f. Unlock\n\n```text\nunlock_object(\n    object_uri=SRVD_URI,\n    lock_handle=LOCK_HANDLE_SRVD,\n)\n```\n\n### 1g. Activate\n\n```text\nactivate_object(\n    object_name=\"ZSD_CUSTOMER_ACTIVE\",\n    object_uri=SRVD_URI,\n)\n# Must succeed before Step 2 - the binding cannot publish an inactive service definition.\n```\n\n---\n\n## Step 2 - Create and publish the service binding `ZSB_CUSTOMER_ACTIVE`\n\nOne-shot call that creates the SRVB/SVB, activates it, and publishes it. Binding version is\nOData v4 (`ODATA\\CV4`).\n\n```text\ncreate_and_publish_service_binding(\n    name=\"ZSB_CUSTOMER_ACTIVE\",\n    description=\"OData v4 binding for ZSD_CUSTOMER_ACTIVE (Fiori consumer)\",\n    service_definition=\"ZSD_CUSTOMER_ACTIVE\",\n    package=\"ZSD_API\",\n    binding_version=\"ODATA\\\\CV4\",\n    corr_nr=\"D2AK904120\",\n)\n# Capture: service URL (looks like /sap/opu/odata4/sap/zsb_customer_active/srvd_a2x/0001/)\n#          metadata URL (same + \"$metadata\")\n# Note: a WARNING status is NOT fatal - if a service URL is returned, the binding is live.\n# Only ERROR means stop and diagnose.\n```\n\nIf the release rejects `ODATA\\CV4`, run `get_service_binding_types()` to pick the exact\nstring accepted by this system and retry.\n\n---\n\n## Step 3 - Verify the service\n\n### 3a. Fetch EDMX metadata\n\nThe service namespace for v4 is the binding name (`ZSB_CUSTOMER_ACTIVE`), not the\nservice definition name.\n\n```text\nget_metadata(\n    service_name=\"ZSD_CUSTOMER_ACTIVE\",\n    service_namespace=\"ZSB_CUSTOMER_ACTIVE\",\n    odata_version=\"v4\",\n)\n# Expected: EDMX XML containing an EntitySet named \"Customers\" with the columns of\n# ZI_CUSTOMER_ACTIVE. Confirm \"Customers\" is present before step 3b.\n```\n\n### 3b. Query the first 5 rows\n\n```text\ncall_sap_api_generic(\n    http_method=\"GET\",\n    service_name=\"ZSD_CUSTOMER_ACTIVE\",\n    service_namespace=\"ZSB_CUSTOMER_ACTIVE\",\n    entity_name=\"Customers\",\n    odata_version=\"v4\",\n    query_parameters={\"$top\": 5},\n)\n# v4 response shape: resp[\"data\"][\"value\"] is the row list (length <= 5).\n# Empty list + no error usually means \"dev client has no master data\" - the service is\n# still correctly wired; see SKILL.md \"Dev client vs test/prod client\".\n```\n\n---\n\n## Audit (optional final check)\n\nConfirm both new objects landed in the expected TR:\n\n```text\nget_transport_objects(transport_number=\"D2AK904120\")\n# Expect entries:\n#   PGMID=R3TR, TYPE=SRVD, NAME=ZSD_CUSTOMER_ACTIVE\n#   PGMID=R3TR, TYPE=SRVB, NAME=ZSB_CUSTOMER_ACTIVE\n```\n\n---\n\n## Summary of tool calls (in order)\n\n1. `list_transports` (preflight, optional)\n2. `search_object` on `ZI_CUSTOMER_ACTIVE` (preflight, optional)\n3. `create_object` - SRVD skeleton `ZSD_CUSTOMER_ACTIVE`\n4. `search_object` - get SRVD URI\n5. `lock_object` on SRVD\n6. `set_object_source` with the `define service ... expose ... as Customers` DDL\n7. `syntax_check`\n8. `unlock_object`\n9. `activate_object` on `ZSD_CUSTOMER_ACTIVE`\n10. `create_and_publish_service_binding` - `ZSB_CUSTOMER_ACTIVE`, `ODATA\\CV4`\n11. `get_metadata` - v4, namespace `ZSB_CUSTOMER_ACTIVE`\n12. `call_sap_api_generic` - `GET Customers?$top=5`\n13. `get_transport_objects` on `D2AK904120` (audit, optional)\n\n## Error-handling reminders\n\n- `CORRNR` missing on `lock_object` - unlock, call `create_transport_and_assign(devclass=\"ZSD_API\", request_text=\"...\", ref=SRVD_URI)`, re-lock. (Should not happen here because `D2AK904120` is already modifiable, but guard for it.)\n- Syntax errors - fix and re-`set_object_source` before unlocking; do not release the lock to retry.\n- `activate_object` failure on the SRVD - inspect the error, re-lock, fix source, re-activate. Do not proceed to the binding.\n- `create_and_publish_service_binding` returns `WARNING` with a URL - treat as success.\n- `create_and_publish_service_binding` returns `ERROR` - stop, surface the message, do not run verification.\n- Empty row list from `call_sap_api_generic` - service is fine; likely a dev-client (110) with no master data. Report to the user rather than retry.\n"}], "grading": {"eval_id": 3, "eval_name": "expose-cds-as-odata-v4", "config": "with_skill", "expectations": [{"text": "Plan creates a service definition with `object_type=\"SRVD/SRV\"`", "passed": true, "evidence": "SRVD/SRV present"}, {"text": "Plan fully activates the service definition before creating the binding (lock \u2192 set_source \u2192 unlock \u2192 activate)", "passed": true, "evidence": "full edit-activate loop on SRVD present"}, {"text": "Plan calls `create_and_publish_service_binding` (not separate create+publish)", "passed": true, "evidence": "one-shot binding create-and-publish used"}, {"text": "`binding_version` param is `ODATA\\CV4` or equivalent v4 value", "passed": true, "evidence": "v4 binding_version specified"}, {"text": "Both SRVD and SRVB creations pass `corr_nr=\"D2AK904120\"`", "passed": true, "evidence": "TR D2AK904120 reused for both"}, {"text": "Plan calls `get_metadata` with `odata_version=\"v4\"` and service_namespace (ZSB) for verification", "passed": true, "evidence": "get_metadata v4 call present"}, {"text": "Plan calls `call_sap_api_generic` with query_parameters containing `$top: 5`", "passed": true, "evidence": "$top=5 in API call"}, {"text": "Plan clearly distinguishes between the service definition name (ZSD_) and the service binding name (ZSB_) when passing to tools", "passed": true, "evidence": "both ZSD and ZSB names present"}], "pass_count": 8, "total": 8}}, {"id": "eval-3-expose-cds-as-odata-v4-without_skill", "prompt": "We already have the active CDS view `ZI_CUSTOMER_ACTIVE` in package `ZSD_API`. I want to expose it as an OData v4 service so a Fiori app can consume it. Outline the full sequence of `sap-adt-mcp` tool calls to (1) create and activate a service definition `ZSD_CUSTOMER_ACTIVE` that exposes the view as the entity `Customers`, (2) create and publish a service binding `ZSB_CUSTOMER_ACTIVE` with OData v4, and (3) verify the service works by fetching metadata and querying the first 5 rows. Keep everything in the existing TR `D2AK904120`.", "eval_id": 3, "outputs": [{"name": "plan.md", "type": "text", "content": "# Plan: Expose `ZI_CUSTOMER_ACTIVE` as OData v4 Service\n\nThis plan outlines the full sequence of `sap-adt-mcp` tool calls required to expose the existing CDS view `ZI_CUSTOMER_ACTIVE` (package `ZSD_API`) as an OData v4 service consumable by a Fiori app. All changes are recorded in the existing transport request `D2AK904120`.\n\nObject names:\n\n| Role                | Name                    |\n|---------------------|-------------------------|\n| Source CDS view     | `ZI_CUSTOMER_ACTIVE`    |\n| Service Definition  | `ZSD_CUSTOMER_ACTIVE`   |\n| Exposed entity set  | `Customers`             |\n| Service Binding     | `ZSB_CUSTOMER_ACTIVE`   |\n| Binding type        | OData v4 (UI/Web API)   |\n| Package             | `ZSD_API`               |\n| Transport           | `D2AK904120`            |\n\nAuthentication is assumed to be provided via the middleware headers (`x-hostname`, `x-username`, `x-password`, `x-client`), so an explicit `connect_to_sap` is not strictly required. It is included below as a safety check.\n\n---\n\n## Step 0 \u2014 (Optional) Verify connection\n\n```jsonc\n// Tool: connect_to_sap\n{}\n```\n\nExpected: a success response confirming an `AdtClient` is available in the pool.\n\n---\n\n## Step 1 \u2014 Sanity check: the CDS view exists and is active\n\n```jsonc\n// Tool: search_object\n{\n  \"query\": \"ZI_CUSTOMER_ACTIVE\",\n  \"object_type\": \"DDLS\",\n  \"max_results\": 5\n}\n```\n\n```jsonc\n// Tool: get_object_structure\n{\n  \"object_name\": \"ZI_CUSTOMER_ACTIVE\",\n  \"object_type\": \"DDLS\"\n}\n```\n\nExpected: the DDLS is returned, active, in package `ZSD_API`. If inactive, activate it first with `activate_object` before continuing.\n\n---\n\n## Step 2 \u2014 Create the Service Definition `ZSD_CUSTOMER_ACTIVE`\n\nService Definitions are ABAP repository object type `SRVD` (DDL source subtype `SRVD`). We create the empty shell, then write the DDLS source, then activate.\n\n### 2a. Create the SRVD object\n\n```jsonc\n// Tool: create_object\n{\n  \"object_type\": \"SRVD\",\n  \"object_name\": \"ZSD_CUSTOMER_ACTIVE\",\n  \"package\": \"ZSD_API\",\n  \"description\": \"Service Definition for ZI_CUSTOMER_ACTIVE (Customers)\",\n  \"transport\": \"D2AK904120\"\n}\n```\n\nIf the tool requires a more specific creation kind, the equivalent is:\n\n```jsonc\n// Tool: get_creatable_object_types\n{}\n// -> Inspect result for the exact \"SRVD\" / \"Service Definition\" key,\n//    then pass that key as object_type.\n```\n\nExpected: `ZSD_CUSTOMER_ACTIVE` is created (inactive) in `ZSD_API` and linked to transport `D2AK904120`.\n\n### 2b. Lock the Service Definition before editing\n\n```jsonc\n// Tool: lock_object\n{\n  \"object_name\": \"ZSD_CUSTOMER_ACTIVE\",\n  \"object_type\": \"SRVD\"\n}\n```\n\nExpected: lock handle returned; session becomes stateful.\n\n### 2c. Write the Service Definition source\n\n```jsonc\n// Tool: set_object_source\n{\n  \"object_name\": \"ZSD_CUSTOMER_ACTIVE\",\n  \"object_type\": \"SRVD\",\n  \"source\": \"@EndUserText.label: 'Service Definition for Customers'\\n define service ZSD_CUSTOMER_ACTIVE {\\n   expose ZI_CUSTOMER_ACTIVE as Customers;\\n }\",\n  \"transport\": \"D2AK904120\"\n}\n```\n\nKey points in the DDLS source:\n- `expose ZI_CUSTOMER_ACTIVE as Customers` sets the entity set name exactly as required.\n- `@EndUserText.label` provides the description.\n\n### 2d. Syntax check (optional but recommended)\n\n```jsonc\n// Tool: syntax_check\n{\n  \"object_name\": \"ZSD_CUSTOMER_ACTIVE\",\n  \"object_type\": \"SRVD\"\n}\n```\n\nExpected: no errors. Fix and rewrite via `set_object_source` if any appear.\n\n### 2e. Unlock\n\n```jsonc\n// Tool: unlock_object\n{\n  \"object_name\": \"ZSD_CUSTOMER_ACTIVE\",\n  \"object_type\": \"SRVD\"\n}\n```\n\n### 2f. Activate\n\n```jsonc\n// Tool: activate_object\n{\n  \"object_name\": \"ZSD_CUSTOMER_ACTIVE\",\n  \"object_type\": \"SRVD\"\n}\n```\n\nExpected: activation success, no errors.\n\n---\n\n## Step 3 \u2014 Create and publish the Service Binding `ZSB_CUSTOMER_ACTIVE`\n\nThe server exposes a dedicated high-level tool that creates the SRVB object and publishes it in a single call. Use it.\n\n### 3a. (Optional) Inspect available binding types\n\n```jsonc\n// Tool: get_service_binding_types\n{}\n```\n\nExpected: a catalog with entries for OData v2 UI, OData v4 UI, OData v4 Web API, SQL, INA, etc. Pick the v4 UI/Web API identifier \u2014 typically `ODATA_V4_UI` or `ODATA_V4` (sometimes differentiated as `WEB_API`). Adjust `binding_type` below to match.\n\n### 3b. Create and publish\n\n```jsonc\n// Tool: create_and_publish_service_binding\n{\n  \"binding_name\": \"ZSB_CUSTOMER_ACTIVE\",\n  \"service_definition\": \"ZSD_CUSTOMER_ACTIVE\",\n  \"binding_type\": \"ODATA_V4_UI\",\n  \"package\": \"ZSD_API\",\n  \"description\": \"Service Binding (OData v4) for ZI_CUSTOMER_ACTIVE\",\n  \"transport\": \"D2AK904120\",\n  \"publish\": true\n}\n```\n\nNotes:\n- `publish: true` triggers the activation + publish step (equivalent to the \"Publish\" button in ADT). Without publishing, the OData endpoint URL is not registered and metadata requests will 404.\n- Use `ODATA_V4_WEBAPI` instead of `ODATA_V4_UI` if the Fiori app is consuming as an external API / headless scenario.\n\nExpected: success payload returns the published service path, typically something like:\n`/sap/opu/odata4/sap/zsb_customer_active/srvd_a2x/sap/zsd_customer_active/0001/`\n\nRecord this `service_url` for Step 4.\n\n### 3c. (Fallback) Manual path if `create_and_publish_service_binding` is not available\n\n```jsonc\n// Tool: create_object\n{\n  \"object_type\": \"SRVB\",\n  \"object_name\": \"ZSB_CUSTOMER_ACTIVE\",\n  \"package\": \"ZSD_API\",\n  \"description\": \"Service Binding (OData v4) for ZI_CUSTOMER_ACTIVE\",\n  \"transport\": \"D2AK904120\"\n}\n```\nThen `lock_object` -> `set_object_source` (with the SRVB XML pointing to `ZSD_CUSTOMER_ACTIVE` and binding type `ODATA` / version `V4`) -> `unlock_object` -> `activate_object`. Publishing via the SRVB-specific publish endpoint is what `create_and_publish_service_binding` wraps, so prefer 3b.\n\n---\n\n## Step 4 \u2014 Verify: fetch metadata and query 5 rows\n\nWe need the exact service URL from Step 3b. Below it is referenced as `<SERVICE_URL>` and should be substituted with the published path, e.g.:\n`/sap/opu/odata4/sap/zsb_customer_active/srvd_a2x/sap/zsd_customer_active/0001/`\n\n### 4a. Fetch the service metadata (EDMX)\n\n```jsonc\n// Tool: get_metadata\n{\n  \"service_url\": \"/sap/opu/odata4/sap/zsb_customer_active/srvd_a2x/sap/zsd_customer_active/0001/\",\n  \"odata_version\": \"v4\"\n}\n```\n\nExpected: an EDMX XML document containing an `EntityContainer` with an entity set `Customers` whose entity type matches the fields of `ZI_CUSTOMER_ACTIVE`.\n\n### 4b. Query the first 5 rows\n\n```jsonc\n// Tool: call_sap_api_generic\n{\n  \"method\": \"GET\",\n  \"url\": \"/sap/opu/odata4/sap/zsb_customer_active/srvd_a2x/sap/zsd_customer_active/0001/Customers?$top=5&$format=json\",\n  \"odata_version\": \"v4\"\n}\n```\n\nExpected: a JSON response of the form:\n\n```json\n{\n  \"@odata.context\": \".../$metadata#Customers\",\n  \"value\": [\n    { /* row 1 */ },\n    { /* row 2 */ },\n    { /* row 3 */ },\n    { /* row 4 */ },\n    { /* row 5 */ }\n  ]\n}\n```\n\n### 4c. Cross-check against the raw DDIC data (optional diagnostic)\n\nIf row counts or values look wrong, confirm that the CDS view itself returns data:\n\n```jsonc\n// Tool: preview_ddic_data\n{\n  \"object_name\": \"ZI_CUSTOMER_ACTIVE\",\n  \"object_type\": \"DDLS\",\n  \"max_rows\": 5\n}\n```\n\nThis bypasses the OData stack and confirms whether the issue is in the view or in the service binding.\n\n---\n\n## Step 5 \u2014 Confirm everything is on the transport\n\n```jsonc\n// Tool: get_transport_objects\n{\n  \"transport\": \"D2AK904120\"\n}\n```\n\nExpected entries in the transport object list:\n- `R3TR DDLS ZI_CUSTOMER_ACTIVE` (already there; unchanged)\n- `R3TR SRVD ZSD_CUSTOMER_ACTIVE`\n- `R3TR SRVB ZSB_CUSTOMER_ACTIVE`\n\nIf the SRVD or SRVB is missing (e.g. the object got assigned to a different TR by default), use:\n\n```jsonc\n// Tool: transport_check\n{\n  \"object_name\": \"ZSD_CUSTOMER_ACTIVE\",\n  \"object_type\": \"SRVD\"\n}\n```\n\nand re-assign via a fresh `set_object_source` / activation with `transport: \"D2AK904120\"` if needed.\n\n---\n\n## Summary of the happy-path sequence\n\n1. `connect_to_sap` (optional)\n2. `search_object` / `get_object_structure` \u2014 confirm `ZI_CUSTOMER_ACTIVE` is active\n3. `create_object` (SRVD, `ZSD_CUSTOMER_ACTIVE`, `ZSD_API`, TR `D2AK904120`)\n4. `lock_object` -> `set_object_source` (DDLS exposing view as `Customers`) -> `syntax_check` -> `unlock_object` -> `activate_object`\n5. `create_and_publish_service_binding` (`ZSB_CUSTOMER_ACTIVE`, v4, TR `D2AK904120`, `publish: true`)\n6. `get_metadata` on the published service URL\n7. `call_sap_api_generic` GET `Customers?$top=5&$format=json`\n8. `get_transport_objects` on `D2AK904120` \u2014 sanity check both SRVD and SRVB are captured\n\nAfter this sequence the Fiori app can point at\n`/sap/opu/odata4/sap/zsb_customer_active/srvd_a2x/sap/zsd_customer_active/0001/Customers`\nas its entity set.\n"}], "grading": {"eval_id": 3, "eval_name": "expose-cds-as-odata-v4", "config": "without_skill", "expectations": [{"text": "Plan creates a service definition with `object_type=\"SRVD/SRV\"`", "passed": false, "evidence": "SRVD/SRV object_type missing"}, {"text": "Plan fully activates the service definition before creating the binding (lock \u2192 set_source \u2192 unlock \u2192 activate)", "passed": true, "evidence": "full edit-activate loop on SRVD present"}, {"text": "Plan calls `create_and_publish_service_binding` (not separate create+publish)", "passed": true, "evidence": "one-shot binding create-and-publish used"}, {"text": "`binding_version` param is `ODATA\\CV4` or equivalent v4 value", "passed": false, "evidence": "v4 binding version missing"}, {"text": "Both SRVD and SRVB creations pass `corr_nr=\"D2AK904120\"`", "passed": true, "evidence": "TR D2AK904120 reused for both"}, {"text": "Plan calls `get_metadata` with `odata_version=\"v4\"` and service_namespace (ZSB) for verification", "passed": true, "evidence": "get_metadata v4 call present"}, {"text": "Plan calls `call_sap_api_generic` with query_parameters containing `$top: 5`", "passed": true, "evidence": "$top=5 in API call"}, {"text": "Plan clearly distinguishes between the service definition name (ZSD_) and the service binding name (ZSB_) when passing to tools", "passed": true, "evidence": "both ZSD and ZSB names present"}], "pass_count": 6, "total": 8}}], "previous_feedback": {}, "previous_outputs": {}, "benchmark": {"skill_name": "sap-adt-mcp", "iteration": 1, "configs": {"with_skill": {"pass_rate_mean": 1.0, "pass_rate_stddev": 0.0, "duration_mean": 78.6, "duration_stddev": 12.031902038608306, "tokens_mean": 40368.75, "tokens_stddev": 4591.648823316812, "total_passed": 31, "total_possible": 31, "runs": [{"eval_id": 0, "eval_name": "fix-bug-in-existing-class", "config": "with_skill", "pass_count": 8, "total": 8, "pass_rate": 1.0, "duration_s": 65.7, "tokens": 41583, "expectations": [{"text": "Plan uses `search_object` to locate the class (or explicitly skips it only if URI is already known)", "passed": true, "evidence": "search_object call found"}, {"text": "Plan creates a transport via `create_transport_and_assign` or `create_transport_organizer` (task says no TR exists yet)", "passed": true, "evidence": "transport creation call present"}, {"text": "Plan calls `lock_object` and captures a LOCK_HANDLE placeholder", "passed": true, "evidence": "lock_object + LOCK_HANDLE capture present"}, {"text": "`set_object_source` call includes the lock_handle parameter", "passed": true, "evidence": "set_object_source call includes lock_handle"}, {"text": "`syntax_check` appears BEFORE `unlock_object` in the sequence", "passed": true, "evidence": "syntax_check precedes unlock_object"}, {"text": "`unlock_object` appears BEFORE `activate_object`", "passed": true, "evidence": "unlock_object precedes activate_object"}, {"text": "Plan ends with `activate_object` passing both object_name and object_uri", "passed": true, "evidence": "activate_object includes both name and uri"}, {"text": "Uses lowercase URI (e.g. /sap/bc/adt/oo/classes/zcl_customer_api) and uppercase NAME (ZCL_CUSTOMER_API) consistently", "passed": true, "evidence": "lowercase URI + uppercase NAME present"}]}, {"eval_id": 1, "eval_name": "preview-cds-view-data", "config": "with_skill", "pass_count": 7, "total": 7, "pass_rate": 1.0, "duration_s": 72.8, "tokens": 33683, "expectations": [{"text": "Plan calls `search_object` to verify the CDS view exists", "passed": true, "evidence": "search_object call found"}, {"text": "Plan calls `get_ddic_object_metadata` with `object_type=\"cds\"` (lowercase cds, not ddic)", "passed": true, "evidence": "get_ddic_object_metadata with object_type=cds"}, {"text": "Plan calls `preview_ddic_data` with a concrete SELECT statement", "passed": true, "evidence": "preview_ddic_data + SELECT found"}, {"text": "SQL filters for April 2026 rows (date literal in YYYYMMDD form or similar)", "passed": true, "evidence": "April 2026 filter present in SQL"}, {"text": "Plan explicitly flags that dev client 110 may return empty data and explains the cause", "passed": true, "evidence": "dev client issue flagged"}, {"text": "Plan suggests switching client (via connect_to_sap or restarting container with a different SAP_CLIENT)", "passed": true, "evidence": "suggests switching client"}, {"text": "Plan does NOT include `lock_object` or `activate_object` (read-only task)", "passed": true, "evidence": "mentions lock_object ONLY to explicitly flag 'do NOT call lock here' \u2014 guardrail, not an actual call"}]}, {"eval_id": 2, "eval_name": "create-new-cds-view-with-transport", "config": "with_skill", "pass_count": 8, "total": 8, "pass_rate": 1.0, "duration_s": 82.5, "tokens": 44131, "expectations": [{"text": "Plan calls `create_transport_organizer` (or equivalent) BEFORE `create_object`", "passed": true, "evidence": "create_transport_organizer before create_object"}, {"text": "Plan captures BOTH parent TRKORR and child TASK_NUMBER from create_transport_organizer output", "passed": true, "evidence": "TRKORR + TASK_NUMBER both shown"}, {"text": "Plan explicitly explains which transport number goes into which parameter (parent TRKORR vs child task)", "passed": true, "evidence": "parent vs task distinction explained"}, {"text": "`create_object` call uses `object_type=\"DDLS/DF\"`", "passed": true, "evidence": "object_type=DDLS/DF"}, {"text": "`create_object.corr_nr` is set to the TRKORR (passes a non-empty value aligned with what create_transport_organizer returned)", "passed": true, "evidence": "create_object.corr_nr present"}, {"text": "Plan follows lock \u2192 set_source \u2192 unlock \u2192 activate after the create", "passed": true, "evidence": "full lock-set-unlock-activate loop present"}, {"text": "Plan includes concrete CDS DDL source with a WHERE clause filtering on active", "passed": true, "evidence": "DDL with active filter"}, {"text": "Plan ends with `activate_object`", "passed": true, "evidence": "main pipeline ends with activate_object; later mentions of unlock are in an error-recovery cheat-sheet table"}]}, {"eval_id": 3, "eval_name": "expose-cds-as-odata-v4", "config": "with_skill", "pass_count": 8, "total": 8, "pass_rate": 1.0, "duration_s": 93.4, "tokens": 42078, "expectations": [{"text": "Plan creates a service definition with `object_type=\"SRVD/SRV\"`", "passed": true, "evidence": "SRVD/SRV present"}, {"text": "Plan fully activates the service definition before creating the binding (lock \u2192 set_source \u2192 unlock \u2192 activate)", "passed": true, "evidence": "full edit-activate loop on SRVD present"}, {"text": "Plan calls `create_and_publish_service_binding` (not separate create+publish)", "passed": true, "evidence": "one-shot binding create-and-publish used"}, {"text": "`binding_version` param is `ODATA\\CV4` or equivalent v4 value", "passed": true, "evidence": "v4 binding_version specified"}, {"text": "Both SRVD and SRVB creations pass `corr_nr=\"D2AK904120\"`", "passed": true, "evidence": "TR D2AK904120 reused for both"}, {"text": "Plan calls `get_metadata` with `odata_version=\"v4\"` and service_namespace (ZSB) for verification", "passed": true, "evidence": "get_metadata v4 call present"}, {"text": "Plan calls `call_sap_api_generic` with query_parameters containing `$top: 5`", "passed": true, "evidence": "$top=5 in API call"}, {"text": "Plan clearly distinguishes between the service definition name (ZSD_) and the service binding name (ZSB_) when passing to tools", "passed": true, "evidence": "both ZSD and ZSB names present"}]}]}, "without_skill": {"pass_rate_mean": 0.8080357142857143, "pass_rate_stddev": 0.06740923602920311, "duration_mean": 71.475, "duration_stddev": 19.693040225758267, "tokens_mean": 23675.25, "tokens_stddev": 1404.368986413471, "total_passed": 25, "total_possible": 31, "runs": [{"eval_id": 0, "eval_name": "fix-bug-in-existing-class", "config": "without_skill", "pass_count": 7, "total": 8, "pass_rate": 0.875, "duration_s": 61.3, "tokens": 23106, "expectations": [{"text": "Plan uses `search_object` to locate the class (or explicitly skips it only if URI is already known)", "passed": true, "evidence": "search_object call found"}, {"text": "Plan creates a transport via `create_transport_and_assign` or `create_transport_organizer` (task says no TR exists yet)", "passed": true, "evidence": "transport creation call present"}, {"text": "Plan calls `lock_object` and captures a LOCK_HANDLE placeholder", "passed": true, "evidence": "lock_object + LOCK_HANDLE capture present"}, {"text": "`set_object_source` call includes the lock_handle parameter", "passed": true, "evidence": "set_object_source call includes lock_handle"}, {"text": "`syntax_check` appears BEFORE `unlock_object` in the sequence", "passed": true, "evidence": "syntax_check precedes unlock_object"}, {"text": "`unlock_object` appears BEFORE `activate_object`", "passed": false, "evidence": "unlock_object not before activate_object"}, {"text": "Plan ends with `activate_object` passing both object_name and object_uri", "passed": true, "evidence": "activate_object includes both name and uri"}, {"text": "Uses lowercase URI (e.g. /sap/bc/adt/oo/classes/zcl_customer_api) and uppercase NAME (ZCL_CUSTOMER_API) consistently", "passed": true, "evidence": "lowercase URI + uppercase NAME present"}]}, {"eval_id": 1, "eval_name": "preview-cds-view-data", "config": "without_skill", "pass_count": 6, "total": 7, "pass_rate": 0.8571428571428571, "duration_s": 56.9, "tokens": 22211, "expectations": [{"text": "Plan calls `search_object` to verify the CDS view exists", "passed": true, "evidence": "search_object call found"}, {"text": "Plan calls `get_ddic_object_metadata` with `object_type=\"cds\"` (lowercase cds, not ddic)", "passed": false, "evidence": "ddic metadata with object_type=cds not found"}, {"text": "Plan calls `preview_ddic_data` with a concrete SELECT statement", "passed": true, "evidence": "preview_ddic_data + SELECT found"}, {"text": "SQL filters for April 2026 rows (date literal in YYYYMMDD form or similar)", "passed": true, "evidence": "April 2026 filter present in SQL"}, {"text": "Plan explicitly flags that dev client 110 may return empty data and explains the cause", "passed": true, "evidence": "dev client issue flagged"}, {"text": "Plan suggests switching client (via connect_to_sap or restarting container with a different SAP_CLIENT)", "passed": true, "evidence": "suggests switching client"}, {"text": "Plan does NOT include `lock_object` or `activate_object` (read-only task)", "passed": true, "evidence": "correctly skipped lock/activate (read-only)"}]}, {"eval_id": 2, "eval_name": "create-new-cds-view-with-transport", "config": "without_skill", "pass_count": 6, "total": 8, "pass_rate": 0.75, "duration_s": 100.3, "tokens": 25523, "expectations": [{"text": "Plan calls `create_transport_organizer` (or equivalent) BEFORE `create_object`", "passed": true, "evidence": "create_transport_organizer before create_object"}, {"text": "Plan captures BOTH parent TRKORR and child TASK_NUMBER from create_transport_organizer output", "passed": true, "evidence": "TRKORR + TASK_NUMBER both shown"}, {"text": "Plan explicitly explains which transport number goes into which parameter (parent TRKORR vs child task)", "passed": true, "evidence": "parent vs task distinction explained"}, {"text": "`create_object` call uses `object_type=\"DDLS/DF\"`", "passed": false, "evidence": "DDLS/DF object_type missing"}, {"text": "`create_object.corr_nr` is set to the TRKORR (passes a non-empty value aligned with what create_transport_organizer returned)", "passed": false, "evidence": "create_object missing corr_nr"}, {"text": "Plan follows lock \u2192 set_source \u2192 unlock \u2192 activate after the create", "passed": true, "evidence": "full lock-set-unlock-activate loop present"}, {"text": "Plan includes concrete CDS DDL source with a WHERE clause filtering on active", "passed": true, "evidence": "DDL with active filter"}, {"text": "Plan ends with `activate_object`", "passed": true, "evidence": "plan ends with activate_object"}]}, {"eval_id": 3, "eval_name": "expose-cds-as-odata-v4", "config": "without_skill", "pass_count": 6, "total": 8, "pass_rate": 0.75, "duration_s": 67.4, "tokens": 23861, "expectations": [{"text": "Plan creates a service definition with `object_type=\"SRVD/SRV\"`", "passed": false, "evidence": "SRVD/SRV object_type missing"}, {"text": "Plan fully activates the service definition before creating the binding (lock \u2192 set_source \u2192 unlock \u2192 activate)", "passed": true, "evidence": "full edit-activate loop on SRVD present"}, {"text": "Plan calls `create_and_publish_service_binding` (not separate create+publish)", "passed": true, "evidence": "one-shot binding create-and-publish used"}, {"text": "`binding_version` param is `ODATA\\CV4` or equivalent v4 value", "passed": false, "evidence": "v4 binding version missing"}, {"text": "Both SRVD and SRVB creations pass `corr_nr=\"D2AK904120\"`", "passed": true, "evidence": "TR D2AK904120 reused for both"}, {"text": "Plan calls `get_metadata` with `odata_version=\"v4\"` and service_namespace (ZSB) for verification", "passed": true, "evidence": "get_metadata v4 call present"}, {"text": "Plan calls `call_sap_api_generic` with query_parameters containing `$top: 5`", "passed": true, "evidence": "$top=5 in API call"}, {"text": "Plan clearly distinguishes between the service definition name (ZSD_) and the service binding name (ZSB_) when passing to tools", "passed": true, "evidence": "both ZSD and ZSB names present"}]}]}}, "delta": {"pass_rate": 0.1919642857142857, "duration_s": 7.125, "tokens": 16693.5}}};
+
+    // ---- State ----
+    let feedbackMap = {};  // run_id -> feedback text
+    let currentIndex = 0;
+    let visitedRuns = new Set();
+
+    // ---- Init ----
+    async function init() {
+      // Load saved feedback from server — but only if this isn't a fresh
+      // iteration (indicated by previous_feedback being present). When
+      // previous feedback exists, the feedback.json on disk is stale from
+      // the prior iteration and should not pre-fill the textareas.
+      const hasPrevious = Object.keys(EMBEDDED_DATA.previous_feedback || {}).length > 0
+        || Object.keys(EMBEDDED_DATA.previous_outputs || {}).length > 0;
+      if (!hasPrevious) {
+        try {
+          const resp = await fetch("/api/feedback");
+          const data = await resp.json();
+          if (data.reviews) {
+            for (const r of data.reviews) feedbackMap[r.run_id] = r.feedback;
+          }
+        } catch { /* first run, no feedback yet */ }
+      }
+
+      document.getElementById("skill-name").textContent = EMBEDDED_DATA.skill_name;
+      showRun(0);
+
+      // Wire up feedback auto-save
+      const textarea = document.getElementById("feedback");
+      let saveTimeout = null;
+      textarea.addEventListener("input", () => {
+        clearTimeout(saveTimeout);
+        document.getElementById("feedback-status").textContent = "";
+        saveTimeout = setTimeout(() => saveCurrentFeedback(), 800);
+      });
+    }
+
+    // ---- Navigation ----
+    function navigate(delta) {
+      const newIndex = currentIndex + delta;
+      if (newIndex >= 0 && newIndex < EMBEDDED_DATA.runs.length) {
+        saveCurrentFeedback();
+        showRun(newIndex);
+      }
+    }
+
+    function updateNavButtons() {
+      document.getElementById("prev-btn").disabled = currentIndex === 0;
+      document.getElementById("next-btn").disabled =
+        currentIndex === EMBEDDED_DATA.runs.length - 1;
+    }
+
+    // ---- Show a run ----
+    function showRun(index) {
+      currentIndex = index;
+      const run = EMBEDDED_DATA.runs[index];
+
+      // Progress
+      document.getElementById("progress").textContent =
+        `${index + 1} of ${EMBEDDED_DATA.runs.length}`;
+
+      // Prompt
+      document.getElementById("prompt-text").textContent = run.prompt;
+
+      // Config badge
+      const badge = document.getElementById("config-badge");
+      const configMatch = run.id.match(/(with_skill|without_skill|new_skill|old_skill)/);
+      if (configMatch) {
+        const config = configMatch[1];
+        const isBaseline = config === "without_skill" || config === "old_skill";
+        badge.textContent = config.replace(/_/g, " ");
+        badge.className = "config-badge " + (isBaseline ? "config-baseline" : "config-primary");
+        badge.style.display = "inline-block";
+      } else {
+        badge.style.display = "none";
+      }
+
+      // Outputs
+      renderOutputs(run);
+
+      // Previous outputs
+      renderPrevOutputs(run);
+
+      // Grades
+      renderGrades(run);
+
+      // Previous feedback
+      const prevFb = (EMBEDDED_DATA.previous_feedback || {})[run.id];
+      const prevEl = document.getElementById("prev-feedback");
+      if (prevFb) {
+        document.getElementById("prev-feedback-text").textContent = prevFb;
+        prevEl.style.display = "block";
+      } else {
+        prevEl.style.display = "none";
+      }
+
+      // Feedback
+      document.getElementById("feedback").value = feedbackMap[run.id] || "";
+      document.getElementById("feedback-status").textContent = "";
+
+      updateNavButtons();
+
+      // Track visited runs and promote done button when all visited
+      visitedRuns.add(index);
+      const doneBtn = document.getElementById("done-btn");
+      if (visitedRuns.size >= EMBEDDED_DATA.runs.length) {
+        doneBtn.classList.add("ready");
+      }
+
+      // Scroll main content to top
+      document.querySelector(".main").scrollTop = 0;
+    }
+
+    // ---- Render outputs ----
+    function renderOutputs(run) {
+      const container = document.getElementById("outputs-body");
+      container.innerHTML = "";
+
+      const outputs = run.outputs || [];
+      if (outputs.length === 0) {
+        container.innerHTML = '<div class="empty-state">No output files</div>';
+        return;
+      }
+
+      for (const file of outputs) {
+        const fileDiv = document.createElement("div");
+        fileDiv.className = "output-file";
+
+        // Always show file header with download link
+        const header = document.createElement("div");
+        header.className = "output-file-header";
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = file.name;
+        header.appendChild(nameSpan);
+        const dlBtn = document.createElement("a");
+        dlBtn.className = "dl-btn";
+        dlBtn.textContent = "Download";
+        dlBtn.download = file.name;
+        dlBtn.href = getDownloadUri(file);
+        header.appendChild(dlBtn);
+        fileDiv.appendChild(header);
+
+        const content = document.createElement("div");
+        content.className = "output-file-content";
+
+        if (file.type === "text") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          content.appendChild(pre);
+        } else if (file.type === "image") {
+          const img = document.createElement("img");
+          img.src = file.data_uri;
+          img.alt = file.name;
+          content.appendChild(img);
+        } else if (file.type === "pdf") {
+          const iframe = document.createElement("iframe");
+          iframe.src = file.data_uri;
+          content.appendChild(iframe);
+        } else if (file.type === "xlsx") {
+          renderXlsx(content, file.data_b64);
+        } else if (file.type === "binary") {
+          const a = document.createElement("a");
+          a.className = "download-link";
+          a.href = file.data_uri;
+          a.download = file.name;
+          a.textContent = "Download " + file.name;
+          content.appendChild(a);
+        } else if (file.type === "error") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          pre.style.color = "var(--red)";
+          content.appendChild(pre);
+        }
+
+        fileDiv.appendChild(content);
+        container.appendChild(fileDiv);
+      }
+    }
+
+    // ---- XLSX rendering via SheetJS ----
+    function renderXlsx(container, b64Data) {
+      try {
+        const raw = Uint8Array.from(atob(b64Data), c => c.charCodeAt(0));
+        const wb = XLSX.read(raw, { type: "array" });
+
+        for (let i = 0; i < wb.SheetNames.length; i++) {
+          const sheetName = wb.SheetNames[i];
+          const ws = wb.Sheets[sheetName];
+
+          if (wb.SheetNames.length > 1) {
+            const sheetLabel = document.createElement("div");
+            sheetLabel.style.cssText =
+              "font-weight:600; font-size:0.8rem; color:#b0aea5; margin-top:0.5rem; margin-bottom:0.25rem;";
+            sheetLabel.textContent = "Sheet: " + sheetName;
+            container.appendChild(sheetLabel);
+          }
+
+          const htmlStr = XLSX.utils.sheet_to_html(ws, { editable: false });
+          const wrapper = document.createElement("div");
+          wrapper.innerHTML = htmlStr;
+          container.appendChild(wrapper);
+        }
+      } catch (err) {
+        container.textContent = "Error rendering spreadsheet: " + err.message;
+      }
+    }
+
+    // ---- Grades ----
+    function renderGrades(run) {
+      const section = document.getElementById("grades-section");
+      const content = document.getElementById("grades-content");
+
+      if (!run.grading) {
+        section.style.display = "none";
+        return;
+      }
+
+      const grading = run.grading;
+      section.style.display = "block";
+      // Reset to collapsed
+      content.classList.remove("open");
+      document.getElementById("grades-arrow").classList.remove("open");
+
+      const summary = grading.summary || {};
+      const expectations = grading.expectations || [];
+
+      let html = '<div style="padding: 1rem;">';
+
+      // Summary line
+      const passRate = summary.pass_rate != null
+        ? Math.round(summary.pass_rate * 100) + "%"
+        : "?";
+      const badgeClass = summary.pass_rate >= 0.8 ? "grade-pass" : summary.pass_rate >= 0.5 ? "" : "grade-fail";
+      html += '<div class="grades-summary">';
+      html += '<span class="grade-badge ' + badgeClass + '">' + passRate + '</span>';
+      html += '<span>' + (summary.passed || 0) + ' passed, ' + (summary.failed || 0) + ' failed of ' + (summary.total || 0) + '</span>';
+      html += '</div>';
+
+      // Assertions list
+      html += '<ul class="assertion-list">';
+      for (const exp of expectations) {
+        const statusClass = exp.passed ? "pass" : "fail";
+        const statusIcon = exp.passed ? "\u2713" : "\u2717";
+        html += '<li class="assertion-item">';
+        html += '<span class="assertion-status ' + statusClass + '">' + statusIcon + '</span>';
+        html += '<span>' + escapeHtml(exp.text) + '</span>';
+        if (exp.evidence) {
+          html += '<div class="assertion-evidence">' + escapeHtml(exp.evidence) + '</div>';
+        }
+        html += '</li>';
+      }
+      html += '</ul>';
+
+      html += '</div>';
+      content.innerHTML = html;
+    }
+
+    function toggleGrades() {
+      const content = document.getElementById("grades-content");
+      const arrow = document.getElementById("grades-arrow");
+      content.classList.toggle("open");
+      arrow.classList.toggle("open");
+    }
+
+    // ---- Previous outputs (collapsible) ----
+    function renderPrevOutputs(run) {
+      const section = document.getElementById("prev-outputs-section");
+      const content = document.getElementById("prev-outputs-content");
+      const prevOutputs = (EMBEDDED_DATA.previous_outputs || {})[run.id];
+
+      if (!prevOutputs || prevOutputs.length === 0) {
+        section.style.display = "none";
+        return;
+      }
+
+      section.style.display = "block";
+      // Reset to collapsed
+      content.classList.remove("open");
+      document.getElementById("prev-outputs-arrow").classList.remove("open");
+
+      // Render the files into the content area
+      content.innerHTML = "";
+      const wrapper = document.createElement("div");
+      wrapper.style.padding = "1rem";
+
+      for (const file of prevOutputs) {
+        const fileDiv = document.createElement("div");
+        fileDiv.className = "output-file";
+
+        const header = document.createElement("div");
+        header.className = "output-file-header";
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = file.name;
+        header.appendChild(nameSpan);
+        const dlBtn = document.createElement("a");
+        dlBtn.className = "dl-btn";
+        dlBtn.textContent = "Download";
+        dlBtn.download = file.name;
+        dlBtn.href = getDownloadUri(file);
+        header.appendChild(dlBtn);
+        fileDiv.appendChild(header);
+
+        const fc = document.createElement("div");
+        fc.className = "output-file-content";
+
+        if (file.type === "text") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          fc.appendChild(pre);
+        } else if (file.type === "image") {
+          const img = document.createElement("img");
+          img.src = file.data_uri;
+          img.alt = file.name;
+          fc.appendChild(img);
+        } else if (file.type === "pdf") {
+          const iframe = document.createElement("iframe");
+          iframe.src = file.data_uri;
+          fc.appendChild(iframe);
+        } else if (file.type === "xlsx") {
+          renderXlsx(fc, file.data_b64);
+        } else if (file.type === "binary") {
+          const a = document.createElement("a");
+          a.className = "download-link";
+          a.href = file.data_uri;
+          a.download = file.name;
+          a.textContent = "Download " + file.name;
+          fc.appendChild(a);
+        }
+
+        fileDiv.appendChild(fc);
+        wrapper.appendChild(fileDiv);
+      }
+
+      content.appendChild(wrapper);
+    }
+
+    function togglePrevOutputs() {
+      const content = document.getElementById("prev-outputs-content");
+      const arrow = document.getElementById("prev-outputs-arrow");
+      content.classList.toggle("open");
+      arrow.classList.toggle("open");
+    }
+
+    // ---- Feedback (saved to server -> feedback.json) ----
+    function saveCurrentFeedback() {
+      const run = EMBEDDED_DATA.runs[currentIndex];
+      const text = document.getElementById("feedback").value;
+
+      if (text.trim() === "") {
+        delete feedbackMap[run.id];
+      } else {
+        feedbackMap[run.id] = text;
+      }
+
+      // Build reviews array from map
+      const reviews = [];
+      for (const [run_id, feedback] of Object.entries(feedbackMap)) {
+        if (feedback.trim()) {
+          reviews.push({ run_id, feedback, timestamp: new Date().toISOString() });
+        }
+      }
+
+      fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reviews, status: "in_progress" }),
+      }).then(() => {
+        document.getElementById("feedback-status").textContent = "Saved";
+      }).catch(() => {
+        // Static mode or server unavailable — no-op on auto-save,
+        // feedback will be downloaded on final submit
+        document.getElementById("feedback-status").textContent = "Will download on submit";
+      });
+    }
+
+    // ---- Done ----
+    function showDoneDialog() {
+      // Save current textarea to feedbackMap (but don't POST yet)
+      const run = EMBEDDED_DATA.runs[currentIndex];
+      const text = document.getElementById("feedback").value;
+      if (text.trim() === "") {
+        delete feedbackMap[run.id];
+      } else {
+        feedbackMap[run.id] = text;
+      }
+
+      // POST once with status: complete — include ALL runs so the model
+      // can distinguish "no feedback" (looks good) from "not reviewed"
+      const reviews = [];
+      const ts = new Date().toISOString();
+      for (const r of EMBEDDED_DATA.runs) {
+        reviews.push({ run_id: r.id, feedback: feedbackMap[r.id] || "", timestamp: ts });
+      }
+      const payload = JSON.stringify({ reviews, status: "complete" }, null, 2);
+      fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payload,
+      }).then(() => {
+        document.getElementById("done-overlay").classList.add("visible");
+      }).catch(() => {
+        // Server not available (static mode) — download as file
+        const blob = new Blob([payload], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "feedback.json";
+        a.click();
+        URL.revokeObjectURL(url);
+        document.getElementById("done-overlay").classList.add("visible");
+      });
+    }
+
+    function closeDoneDialog() {
+      // Reset status back to in_progress
+      saveCurrentFeedback();
+      document.getElementById("done-overlay").classList.remove("visible");
+    }
+
+    // ---- Toast ----
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.classList.add("visible");
+      setTimeout(() => toast.classList.remove("visible"), 2000);
+    }
+
+    // ---- Keyboard nav ----
+    document.addEventListener("keydown", (e) => {
+      // Don't capture when typing in textarea
+      if (e.target.tagName === "TEXTAREA") return;
+
+      if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+        e.preventDefault();
+        navigate(-1);
+      } else if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+        e.preventDefault();
+        navigate(1);
+      }
+    });
+
+    // ---- Util ----
+    function getDownloadUri(file) {
+      if (file.data_uri) return file.data_uri;
+      if (file.data_b64) return "data:application/octet-stream;base64," + file.data_b64;
+      if (file.type === "text") return "data:text/plain;charset=utf-8," + encodeURIComponent(file.content);
+      return "#";
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement("div");
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // ---- View switching ----
+    function switchView(view) {
+      document.querySelectorAll(".view-tab").forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(".view-panel").forEach(p => p.classList.remove("active"));
+      document.querySelector(`[onclick="switchView('${view}')"]`).classList.add("active");
+      document.getElementById("panel-" + view).classList.add("active");
+    }
+
+    // ---- Benchmark rendering ----
+    function renderBenchmark() {
+      const data = EMBEDDED_DATA.benchmark;
+      if (!data) return;
+
+      // Show the tabs
+      document.getElementById("view-tabs").style.display = "flex";
+
+      const container = document.getElementById("benchmark-content");
+      const summary = data.run_summary || {};
+      const metadata = data.metadata || {};
+      const notes = data.notes || [];
+
+      let html = "";
+
+      // Header
+      html += "<h2 style='font-family: Poppins, sans-serif; margin-bottom: 0.5rem;'>Benchmark Results</h2>";
+      html += "<p style='color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.25rem;'>";
+      if (metadata.skill_name) html += "<strong>" + escapeHtml(metadata.skill_name) + "</strong> &mdash; ";
+      if (metadata.timestamp) html += metadata.timestamp + " &mdash; ";
+      if (metadata.evals_run) html += "Evals: " + metadata.evals_run.join(", ") + " &mdash; ";
+      html += (metadata.runs_per_configuration || "?") + " runs per configuration";
+      html += "</p>";
+
+      // Summary table
+      html += '<table class="benchmark-table">';
+
+      function fmtStat(stat, pct) {
+        if (!stat) return "—";
+        const suffix = pct ? "%" : "";
+        const m = pct ? (stat.mean * 100).toFixed(0) : stat.mean.toFixed(1);
+        const s = pct ? (stat.stddev * 100).toFixed(0) : stat.stddev.toFixed(1);
+        return m + suffix + " ± " + s + suffix;
+      }
+
+      function deltaClass(val) {
+        if (!val) return "";
+        const n = parseFloat(val);
+        if (n > 0) return "benchmark-delta-positive";
+        if (n < 0) return "benchmark-delta-negative";
+        return "";
+      }
+
+      // Discover config names dynamically (everything except "delta")
+      const configs = Object.keys(summary).filter(k => k !== "delta");
+      const configA = configs[0] || "config_a";
+      const configB = configs[1] || "config_b";
+      const labelA = configA.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      const labelB = configB.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      const a = summary[configA] || {};
+      const b = summary[configB] || {};
+      const delta = summary.delta || {};
+
+      html += "<thead><tr><th>Metric</th><th>" + escapeHtml(labelA) + "</th><th>" + escapeHtml(labelB) + "</th><th>Delta</th></tr></thead>";
+      html += "<tbody>";
+
+      html += "<tr><td><strong>Pass Rate</strong></td>";
+      html += "<td>" + fmtStat(a.pass_rate, true) + "</td>";
+      html += "<td>" + fmtStat(b.pass_rate, true) + "</td>";
+      html += '<td class="' + deltaClass(delta.pass_rate) + '">' + (delta.pass_rate || "—") + "</td></tr>";
+
+      // Time (only show row if data exists)
+      if (a.time_seconds || b.time_seconds) {
+        html += "<tr><td><strong>Time (s)</strong></td>";
+        html += "<td>" + fmtStat(a.time_seconds, false) + "</td>";
+        html += "<td>" + fmtStat(b.time_seconds, false) + "</td>";
+        html += '<td class="' + deltaClass(delta.time_seconds) + '">' + (delta.time_seconds ? delta.time_seconds + "s" : "—") + "</td></tr>";
+      }
+
+      // Tokens (only show row if data exists)
+      if (a.tokens || b.tokens) {
+        html += "<tr><td><strong>Tokens</strong></td>";
+        html += "<td>" + fmtStat(a.tokens, false) + "</td>";
+        html += "<td>" + fmtStat(b.tokens, false) + "</td>";
+        html += '<td class="' + deltaClass(delta.tokens) + '">' + (delta.tokens || "—") + "</td></tr>";
+      }
+
+      html += "</tbody></table>";
+
+      // Per-eval breakdown (if runs data available)
+      const runs = data.runs || [];
+      if (runs.length > 0) {
+        const evalIds = [...new Set(runs.map(r => r.eval_id))].sort((a, b) => a - b);
+
+        html += "<h3 style='font-family: Poppins, sans-serif; margin-bottom: 0.75rem;'>Per-Eval Breakdown</h3>";
+
+        const hasTime = runs.some(r => r.result && r.result.time_seconds != null);
+        const hasErrors = runs.some(r => r.result && r.result.errors > 0);
+
+        for (const evalId of evalIds) {
+          const evalRuns = runs.filter(r => r.eval_id === evalId);
+          const evalName = evalRuns[0] && evalRuns[0].eval_name ? evalRuns[0].eval_name : "Eval " + evalId;
+
+          html += "<h4 style='font-family: Poppins, sans-serif; margin: 1rem 0 0.5rem; color: var(--text);'>" + escapeHtml(evalName) + "</h4>";
+          html += '<table class="benchmark-table">';
+          html += "<thead><tr><th>Config</th><th>Run</th><th>Pass Rate</th>";
+          if (hasTime) html += "<th>Time (s)</th>";
+          if (hasErrors) html += "<th>Crashes During Execution</th>";
+          html += "</tr></thead>";
+          html += "<tbody>";
+
+          // Group by config and render with average rows
+          const configGroups = [...new Set(evalRuns.map(r => r.configuration))];
+          for (let ci = 0; ci < configGroups.length; ci++) {
+            const config = configGroups[ci];
+            const configRuns = evalRuns.filter(r => r.configuration === config);
+            if (configRuns.length === 0) continue;
+
+            const rowClass = ci === 0 ? "benchmark-row-with" : "benchmark-row-without";
+            const configLabel = config.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+
+            for (const run of configRuns) {
+              const r = run.result || {};
+              const prClass = r.pass_rate >= 0.8 ? "benchmark-delta-positive" : r.pass_rate < 0.5 ? "benchmark-delta-negative" : "";
+              html += '<tr class="' + rowClass + '">';
+              html += "<td>" + configLabel + "</td>";
+              html += "<td>" + run.run_number + "</td>";
+              html += '<td class="' + prClass + '">' + ((r.pass_rate || 0) * 100).toFixed(0) + "% (" + (r.passed || 0) + "/" + (r.total || 0) + ")</td>";
+              if (hasTime) html += "<td>" + (r.time_seconds != null ? r.time_seconds.toFixed(1) : "—") + "</td>";
+              if (hasErrors) html += "<td>" + (r.errors || 0) + "</td>";
+              html += "</tr>";
+            }
+
+            // Average row
+            const rates = configRuns.map(r => (r.result || {}).pass_rate || 0);
+            const avgRate = rates.reduce((a, b) => a + b, 0) / rates.length;
+            const avgPrClass = avgRate >= 0.8 ? "benchmark-delta-positive" : avgRate < 0.5 ? "benchmark-delta-negative" : "";
+            html += '<tr class="benchmark-row-avg ' + rowClass + '">';
+            html += "<td>" + configLabel + "</td>";
+            html += "<td>Avg</td>";
+            html += '<td class="' + avgPrClass + '">' + (avgRate * 100).toFixed(0) + "%</td>";
+            if (hasTime) {
+              const times = configRuns.map(r => (r.result || {}).time_seconds).filter(t => t != null);
+              html += "<td>" + (times.length ? (times.reduce((a, b) => a + b, 0) / times.length).toFixed(1) : "—") + "</td>";
+            }
+            if (hasErrors) html += "<td></td>";
+            html += "</tr>";
+          }
+          html += "</tbody></table>";
+
+          // Per-assertion detail for this eval
+          const runsWithExpectations = {};
+          for (const config of configGroups) {
+            runsWithExpectations[config] = evalRuns.filter(r => r.configuration === config && r.expectations && r.expectations.length > 0);
+          }
+          const hasAnyExpectations = Object.values(runsWithExpectations).some(runs => runs.length > 0);
+          if (hasAnyExpectations) {
+            // Collect all unique assertion texts across all configs
+            const allAssertions = [];
+            const seen = new Set();
+            for (const config of configGroups) {
+              for (const run of runsWithExpectations[config]) {
+                for (const exp of (run.expectations || [])) {
+                  if (!seen.has(exp.text)) {
+                    seen.add(exp.text);
+                    allAssertions.push(exp.text);
+                  }
+                }
+              }
+            }
+
+            html += '<table class="benchmark-table" style="margin-top: 0.5rem;">';
+            html += "<thead><tr><th>Assertion</th>";
+            for (const config of configGroups) {
+              const label = config.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+              html += "<th>" + escapeHtml(label) + "</th>";
+            }
+            html += "</tr></thead><tbody>";
+
+            for (const assertionText of allAssertions) {
+              html += "<tr><td>" + escapeHtml(assertionText) + "</td>";
+
+              for (const config of configGroups) {
+                html += "<td>";
+                for (const run of runsWithExpectations[config]) {
+                  const exp = (run.expectations || []).find(e => e.text === assertionText);
+                  if (exp) {
+                    const cls = exp.passed ? "benchmark-delta-positive" : "benchmark-delta-negative";
+                    const icon = exp.passed ? "\u2713" : "\u2717";
+                    html += '<span class="' + cls + '" title="Run ' + run.run_number + ': ' + escapeHtml(exp.evidence || "") + '">' + icon + "</span> ";
+                  } else {
+                    html += "— ";
+                  }
+                }
+                html += "</td>";
+              }
+              html += "</tr>";
+            }
+            html += "</tbody></table>";
+          }
+        }
+      }
+
+      // Notes
+      if (notes.length > 0) {
+        html += '<div class="benchmark-notes">';
+        html += "<h3>Analysis Notes</h3>";
+        html += "<ul>";
+        for (const note of notes) {
+          html += "<li>" + escapeHtml(note) + "</li>";
+        }
+        html += "</ul></div>";
+      }
+
+      container.innerHTML = html;
+    }
+
+    // ---- Start ----
+    init();
+    renderBenchmark();
+  </script>
+</body>
+</html>
