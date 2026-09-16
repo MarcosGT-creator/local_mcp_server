@@ -1,0 +1,23 @@
+# Variables de entorno (credenciales SAP) - usar .env.example como plantilla
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+build/
+
+# Editores / IDE
+.vscode/
+.idea/
+
+# Claude Code (ajustes locales de cada máquina)
+.claude/settings.local.json
+
+# Logs y temporales
+*.log
