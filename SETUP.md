@@ -34,8 +34,8 @@ docker compose build
 Las credenciales SAP se pasan directamente al arrancar el contenedor.
 Hosts:
 MTD: https://bfwin07.torres.es:1443/
-MTI:
-MTP:
+MTI: https://bfwin04.torres.es:8001/
+MTP: https://bfwin01.torres.es:8081/
 DS4: https://vhmtjds4ci.fra3.sap.torres.es:20400/
 QS4: https://vhmtjqs4ci.fra3.sap.torres.es:20400/
 
